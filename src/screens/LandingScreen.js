@@ -1,0 +1,665 @@
+import React, { useState, useRef, useEffect } from 'react';
+import {
+  StyleSheet,
+  Text,
+  View,
+  TouchableOpacity,
+  ScrollView,
+  Dimensions,
+  Animated,
+  Platform,
+  Easing,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+
+const { width, height } = Dimensions.get('window');
+const isWeb = Platform.OS === 'web';
+
+// Enhanced Sparkle Component with Glow
+const Sparkle = ({ delay, left, top, size = 4, color = '#2563EB' }) => {
+  const opacity = useRef(new Animated.Value(0)).current;
+  const scale = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const animate = () => {
+      Animated.sequence([
+        Animated.delay(delay),
+        Animated.parallel([
+          Animated.timing(opacity, { toValue: 1, duration: 300, useNativeDriver: true }),
+          Animated.spring(scale, { toValue: 1, friction: 3, useNativeDriver: true }),
+        ]),
+        Animated.delay(600),
+        Animated.parallel([
+          Animated.timing(opacity, { toValue: 0, duration: 400, useNativeDriver: true }),
+          Animated.timing(scale, { toValue: 0, duration: 300, useNativeDriver: true }),
+        ]),
+      ]).start(() => animate());
+    };
+    animate();
+  }, []);
+
+  return (
+    <Animated.View
+      style={[
+        styles.sparkle,
+        {
+          left: `${left}%`,
+          top: `${top}%`,
+          width: size,
+          height: size,
+          backgroundColor: color,
+          opacity,
+          transform: [{ scale }],
+        },
+      ]}
+    />
+  );
+};
+
+// Sparkles Strip (appears below phone)
+const SparklesStrip = () => {
+  const sparkles = [];
+  const colors = ['#2563EB', '#06B6D4', '#2A7DEB', '#EC4899'];
+
+  for (let i = 0; i < 40; i++) {
+    sparkles.push({
+      delay: Math.random() * 3000,
+      left: Math.random() * 100,
+      top: Math.random() * 100,
+      size: 2 + Math.random() * 3,
+      color: colors[Math.floor(Math.random() * colors.length)],
+    });
+  }
+
+  return (
+    <View style={styles.sparklesStrip}>
+      {/* Gradient Lines */}
+      <View style={styles.gradientLineContainer}>
+        <View style={[styles.gradientLine, styles.gradientLine1]} />
+        <View style={[styles.gradientLine, styles.gradientLine2]} />
+      </View>
+
+      {/* Sparkles */}
+      {sparkles.map((s, i) => (
+        <Sparkle key={i} {...s} />
+      ))}
+
+      {/* Radial Fade */}
+      <View style={styles.radialFade} />
+    </View>
+  );
+};
+
+// Animated Grid Background
+const AnimatedGrid = () => {
+  const pulse = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 1, duration: 3000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 0, duration: 3000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
+
+  const glowOpacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.02, 0.06] });
+
+  return (
+    <View style={styles.gridContainer}>
+      <View style={styles.gridLines}>
+        {[...Array(12)].map((_, i) => (
+          <View key={`v${i}`} style={[styles.gridLineVertical, { left: `${(i + 1) * 8}%` }]} />
+        ))}
+        {[...Array(8)].map((_, i) => (
+          <View key={`h${i}`} style={[styles.gridLineHorizontal, { top: `${(i + 1) * 12}%` }]} />
+        ))}
+      </View>
+      <Animated.View style={[styles.glowSpot, styles.glowSpot1, { opacity: glowOpacity }]} />
+      <Animated.View style={[styles.glowSpot, styles.glowSpot2, { opacity: glowOpacity }]} />
+    </View>
+  );
+};
+
+// Animated Avatar Component Removed
+
+// New Modern Section Component
+const ModernSection = ({ title, subtitle, icon, align = 'left', isDark = false }) => (
+  <View style={[styles.modernSection, isDark && styles.modernSectionDark, align === 'right' && styles.modernSectionRight]}>
+    <View style={styles.modernSectionContent}>
+      <View style={[styles.modernIconBox, isDark ? styles.modernIconBoxDark : styles.modernIconBoxLight]}>
+        <Ionicons name={icon} size={24} color={isDark ? '#60A5FA' : '#2563EB'} />
+      </View>
+      <Text style={[styles.modernTitle, isDark && styles.textWhite]}>{title}</Text>
+      <Text style={[styles.modernSubtitle, isDark && styles.textGray]}>{subtitle}</Text>
+    </View>
+    <View style={[styles.modernVisual, align === 'right' && styles.modernVisualLeft]}>
+      {/* Abstract visual representation */}
+      <View style={[styles.visualCard, isDark ? styles.visualCardDark : styles.visualCardLight]}>
+        <View style={styles.visualLine} />
+        <View style={[styles.visualLine, { width: '60%' }]} />
+        <View style={[styles.visualLine, { width: '80%' }]} />
+        <View style={[styles.visualCircle]} />
+      </View>
+    </View>
+  </View>
+);
+
+// Phone Mockup Component
+const PhoneMockup = () => {
+  return (
+    <View style={styles.phoneMockup}>
+      <View style={styles.phoneScreen}>
+        <View style={styles.dynamicIsland}>
+          <View style={styles.dynamicIslandPill} />
+        </View>
+        <View style={styles.quizContent}>
+          <View style={styles.quizHeader}>
+            <Ionicons name="chevron-back" size={12} color="#94A3B8" />
+            <Text style={styles.quizSubject}>Modern History</Text>
+            <View style={styles.quizBadge}>
+              <Text style={styles.quizBadgeText}>12/20</Text>
+            </View>
+          </View>
+          <View style={styles.questionCard}>
+            <Text style={styles.questionLabel}>Q 13</Text>
+            <Text style={styles.questionText}>Which act introduced communal representation?</Text>
+          </View>
+          <View style={styles.optionsContainer}>
+            {[
+              { id: 'A', text: 'Indian Councils Act, 1892', correct: false },
+              { id: 'B', text: 'Indian Councils Act, 1909', correct: true },
+              { id: 'C', text: 'Govt. of India Act, 1919', correct: false },
+            ].map((opt, i) => (
+              <View key={i} style={[styles.optionItem, opt.correct && styles.optionItemCorrect]}>
+                <View style={[styles.optionBadge, opt.correct && styles.optionBadgeCorrect]}>
+                  {opt.correct ? <Ionicons name="checkmark" size={8} color="#FFF" /> : <Text style={styles.optionBadgeText}>{opt.id}</Text>}
+                </View>
+                <Text style={[styles.optionText, opt.correct && styles.optionTextCorrect]}>{opt.text}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+};
+
+// Feature Card
+const FeatureCard = ({ icon, iconBg, title, description }) => (
+  <View style={styles.featureCard}>
+    <View style={[styles.featureIcon, { backgroundColor: iconBg }]}>
+      <Ionicons name={icon} size={22} color="#2563EB" />
+    </View>
+    <Text style={styles.featureTitle}>{title}</Text>
+    <Text style={styles.featureDescription}>{description}</Text>
+  </View>
+);
+
+// Pricing Card
+const PricingCard = ({ plan, price, period, features, popular, onPress }) => (
+  <View style={[styles.pricingCard, popular && styles.pricingCardPopular]}>
+    {popular && (
+      <View style={styles.popularBadge}>
+        <Text style={styles.popularBadgeText}>MOST POPULAR</Text>
+      </View>
+    )}
+    <Text style={styles.pricingPlanName}>{plan}</Text>
+    <View style={styles.pricingPriceRow}>
+      <Text style={styles.pricingCurrency}>₹</Text>
+      <Text style={styles.pricingPrice}>{price}</Text>
+      <Text style={styles.pricingPeriod}>/{period}</Text>
+    </View>
+    <View style={styles.pricingFeatures}>
+      {features.map((feature, i) => (
+        <View key={i} style={styles.pricingFeatureRow}>
+          <Ionicons name="checkmark-circle" size={18} color="#10B981" />
+          <Text style={styles.pricingFeatureText}>{feature}</Text>
+        </View>
+      ))}
+    </View>
+    <TouchableOpacity style={[styles.pricingButton, popular && styles.pricingButtonPopular]} onPress={onPress}>
+      <Text style={[styles.pricingButtonText, popular && styles.pricingButtonTextPopular]}>Get Started</Text>
+      <Ionicons name="arrow-forward" size={16} color={popular ? '#FFF' : '#0F172A'} />
+    </TouchableOpacity>
+  </View>
+);
+
+export default function LandingScreen({ navigation }) {
+  const scrollRef = useRef(null);
+  const [pricingY, setPricingY] = useState(0);
+
+  const handleGetStarted = () => navigation.navigate('Login');
+
+  const scrollToPricing = () => {
+    scrollRef.current?.scrollTo({ y: pricingY, animated: true });
+  };
+
+  return (
+    <View style={styles.container}>
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        {/* Navbar with Links */}
+        <View style={styles.navbar}>
+          <View style={styles.navbarInner}>
+            <View style={styles.logoContainer}>
+              {/* PrepAssist Logo SVG */}
+              <View style={styles.logoIcon}>
+                <View style={styles.logoArrowOrange} />
+                <View style={styles.logoArrowBlue} />
+              </View>
+              <Text style={styles.logoText}>Prep<Text style={styles.logoTextLight}>Assist</Text></Text>
+            </View>
+
+            {/* Nav Links */}
+            {isWeb && (
+              <View style={styles.navLinks}>
+                <TouchableOpacity onPress={() => navigation.navigate('Pricing')}>
+                  <Text style={styles.navLink}>Pricing</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            <View style={styles.navButtons}>
+              <TouchableOpacity style={styles.signInLink} onPress={handleGetStarted}>
+                <Text style={styles.signInLinkText}>Sign In</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.signUpButton} onPress={handleGetStarted}>
+                <Text style={styles.signUpButtonText}>Sign Up</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+
+        <ScrollView
+          ref={scrollRef}
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Hero Section */}
+          <View style={styles.heroSection}>
+            <AnimatedGrid />
+
+            <View style={styles.heroRow}>
+              {/* Text Content */}
+              <View style={styles.heroContent}>
+                <View style={styles.heroBadge}>
+                  <View style={styles.heroBadgeDot} />
+                  <Text style={styles.heroBadgeText}>AI-Powered UPSC Preparation</Text>
+                </View>
+
+                <Text style={styles.heroTitle}>
+                  Crack UPSC Smarter{'\n'}
+                  <Text style={styles.heroTitleGradient}>With AI Powered Learning</Text>
+                </Text>
+
+                <Text style={styles.heroSubtitle}>
+                  Personalized practice, writing evaluations, and daily updates built for serious learners.
+                </Text>
+
+                <View style={styles.heroFeatures}>
+                  <View style={styles.heroFeatureItem}>
+                    <Ionicons name="checkmark-circle" size={18} color="#10B981" />
+                    <Text style={styles.heroFeatureText}>AI MCQ Generator</Text>
+                  </View>
+                  <View style={styles.heroFeatureItem}>
+                    <Ionicons name="checkmark-circle" size={18} color="#10B981" />
+                    <Text style={styles.heroFeatureText}>Mains Answer Evaluator</Text>
+                  </View>
+                  <View style={styles.heroFeatureItem}>
+                    <Ionicons name="checkmark-circle" size={18} color="#10B981" />
+                    <Text style={styles.heroFeatureText}>Daily Current Affairs</Text>
+                  </View>
+                </View>
+
+                <View style={styles.heroButtons}>
+                  <TouchableOpacity style={styles.primaryButton} onPress={handleGetStarted}>
+                    <Text style={styles.primaryButtonText}>Start Learning Free</Text>
+                    <Ionicons name="arrow-forward" size={16} color="#FFF" />
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.navigate('Pricing')}>
+                    <Text style={styles.secondaryButtonText}>View Pricing</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Social Proof */}
+                <View style={styles.socialProof}>
+                  <View>
+                    <View style={styles.starsRow}>
+                      {[1, 2, 3, 4, 5].map((i) => (
+                        <Ionicons key={i} name="star" size={12} color="#FACC15" />
+                      ))}
+                    </View>
+                    <Text style={styles.socialProofText}>
+                      <Text style={styles.socialProofBold}>15,000+</Text> aspirants trust us
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Phone + Sparkles */}
+              {isWeb && width > 768 && (
+                <View style={styles.mockupWrapper}>
+                  <PhoneMockup />
+                </View>
+              )}
+            </View>
+          </View>
+
+          {/* Modern Feature Sections */}
+          <View style={styles.modernSectionsContainer}>
+            <ModernSection
+              title="Your Personal Content Engine"
+              subtitle="Don't just read—interact. Upload any study material and instantly generate practice MCQs and concise summaries. Turn passive reading into active retention without the manual effort."
+              icon="document-text-outline"
+              align="left"
+            />
+
+            <ModernSection
+              title="Progress You Can Actually See"
+              subtitle="The UPSC syllabus is vast. We make it navigable. Granularly track your coverage across every subject and micro-topic. No more guessing games about what's left to cover."
+              icon="stats-chart-outline"
+              align="right"
+              isDark={true}
+            />
+
+            <ModernSection
+              title="Feedback That Never Sleeps"
+              subtitle="Writing practice shouldn't wait for a tutor's schedule. Get instant, objective analysis of your Mains answers. Fix structural flaws and content gaps while the ideas are still fresh."
+              icon="create-outline"
+              align="left"
+            />
+          </View>
+
+          {/* Pricing CTA */}
+          <View style={styles.pricingCTA}>
+            <Text style={styles.pricingCTATitle}>Ready to start your UPSC journey?</Text>
+            <Text style={styles.pricingCTASubtitle}>Choose from our affordable plans starting at just ₹399/month</Text>
+            <TouchableOpacity
+              style={styles.pricingCTAButton}
+              onPress={() => navigation.navigate('Pricing')}
+            >
+              <Text style={styles.pricingCTAButtonText}>View Pricing Plans</Text>
+              <Ionicons name="arrow-forward" size={18} color="#FFF" />
+            </TouchableOpacity>
+          </View>
+
+          {/* CTA */}
+          <View style={styles.ctaSection}>
+            <View style={styles.ctaCard}>
+              <Text style={styles.ctaTitle}>Start your journey today</Text>
+              <TouchableOpacity style={styles.ctaPrimaryButton} onPress={handleGetStarted}>
+                <Text style={styles.ctaPrimaryButtonText}>Create Free Account</Text>
+                <Ionicons name="arrow-forward" size={16} color="#0F172A" />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Footer */}
+          <View style={styles.footer}>
+            <View style={styles.footerLogoContainer}>
+              <View style={styles.logoIconSmall}>
+                <View style={styles.logoArrowOrangeSmall} />
+                <View style={styles.logoArrowBlueSmall} />
+              </View>
+              <Text style={styles.footerLogo}>Prep<Text style={styles.logoTextLight}>Assist</Text></Text>
+            </View>
+            <Text style={styles.footerCopyright}>© 2026 PrepAssist. All rights reserved. Built with ❤️ for aspirants.</Text>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#FFFFFF' },
+  safeArea: { flex: 1 },
+
+  // Sparkles Strip
+  sparklesStrip: {
+    width: '100%',
+    height: 120,
+    backgroundColor: '#0F172A',
+    marginTop: 20,
+    borderRadius: 16,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  sparkle: {
+    position: 'absolute',
+    borderRadius: 20,
+    ...Platform.select({
+      web: { boxShadow: '0 0 8px 2px currentColor' },
+    }),
+  },
+  gradientLineContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 3,
+    alignItems: 'center',
+  },
+  gradientLine: {
+    position: 'absolute',
+    height: 2,
+    borderRadius: 1,
+  },
+  gradientLine1: {
+    width: '60%',
+    backgroundColor: '#2A7DEB',
+    opacity: 0.8,
+  },
+  gradientLine2: {
+    width: '30%',
+    backgroundColor: '#06B6D4',
+    opacity: 0.6,
+    top: 2,
+  },
+  radialFade: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 40,
+    backgroundColor: '#0F172A',
+  },
+
+  // Grid
+  gridContainer: { position: 'absolute', top: 0, left: 0, right: 0, height: height * 0.6, overflow: 'hidden', zIndex: 0 },
+  gridLines: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+  gridLineVertical: { position: 'absolute', top: 0, bottom: 0, width: 1, backgroundColor: 'rgba(37, 99, 235, 0.12)' },
+  gridLineHorizontal: { position: 'absolute', left: 0, right: 0, height: 1, backgroundColor: 'rgba(37, 99, 235, 0.12)' },
+  glowSpot: { position: 'absolute', borderRadius: 500, backgroundColor: '#2563EB' },
+  glowSpot1: { width: 400, height: 400, top: -100, right: -100 },
+  glowSpot2: { width: 300, height: 300, bottom: 50, left: -100 },
+
+  // Avatars
+  animatedAvatar: { width: 34, height: 34, borderRadius: 17, borderWidth: 2, borderColor: '#FFF', alignItems: 'center', justifyContent: 'center' },
+  avatarEmoji: { fontSize: 14 },
+
+  // Navbar
+  navbar: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100, paddingTop: Platform.OS === 'ios' ? 50 : 10, paddingHorizontal: 20 },
+  navbarInner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'rgba(255,255,255,0.95)', paddingVertical: 10, paddingHorizontal: 16, borderRadius: 50, borderWidth: 1, borderColor: '#E5E7EB' },
+  logoContainer: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  logoText: { fontSize: 15, fontWeight: '700', color: '#1A1A1A' },
+  navLinks: { flexDirection: 'row', gap: 24 },
+  navLink: { fontSize: 13, fontWeight: '600', color: '#64748B' },
+  navButtons: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  signInLink: { paddingHorizontal: 12, paddingVertical: 8 },
+  signInLinkText: { fontSize: 12, fontWeight: '600', color: '#64748B' },
+  signUpButton: { backgroundColor: '#0F172A', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 50 },
+  signUpButtonText: { color: '#FFF', fontSize: 12, fontWeight: '700' },
+
+  // Scroll
+  scrollView: { flex: 1 },
+  scrollContent: { paddingTop: Platform.OS === 'ios' ? 100 : 70 },
+
+  // Hero
+  heroSection: { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 40, maxWidth: 1100, alignSelf: 'center', width: '100%', position: 'relative' },
+  heroRow: { flexDirection: isWeb && width > 768 ? 'row' : 'column', alignItems: 'center', gap: 30, zIndex: 10 },
+  heroContent: { flex: 1, maxWidth: 460 },
+  heroBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#EFF6FF', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 50, alignSelf: 'flex-start', borderWidth: 1, borderColor: '#BFDBFE', marginBottom: 20 },
+  heroBadgeDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#10B981', marginRight: 8 },
+  heroBadgeText: { fontSize: 11, fontWeight: '600', color: '#1D4ED8' },
+  heroTitle: { fontSize: isWeb ? 52 : 36, fontWeight: '800', color: '#0F172A', lineHeight: isWeb ? 60 : 44, letterSpacing: -2, marginBottom: 16 },
+  heroTitleGradient: { color: '#3B82F6' },
+  heroSubtitle: { fontSize: 16, color: '#64748B', lineHeight: 26, marginBottom: 24, maxWidth: 480 },
+  heroFeatures: { flexDirection: isWeb ? 'row' : 'column', flexWrap: 'wrap', gap: 12, marginBottom: 28 },
+  heroFeatureItem: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  heroFeatureText: { fontSize: 14, fontWeight: '600', color: '#334155' },
+  heroButtons: { flexDirection: 'row', gap: 12, marginBottom: 28 },
+  primaryButton: { backgroundColor: '#3B82F6', flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 14, paddingHorizontal: 24, borderRadius: 12 },
+  primaryButtonText: { color: '#FFF', fontSize: 15, fontWeight: '700' },
+  secondaryButton: { backgroundColor: '#F1F5F9', paddingVertical: 14, paddingHorizontal: 24, borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0' },
+  secondaryButtonText: { fontSize: 15, fontWeight: '600', color: '#0F172A' },
+  socialProof: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  avatarStack: { flexDirection: 'row' },
+  starsRow: { flexDirection: 'row', gap: 1, marginBottom: 2 },
+  socialProofText: { fontSize: 11, color: '#64748B' },
+  socialProofBold: { fontWeight: '700', color: '#0F172A' },
+
+  // Mockup
+  mockupWrapper: { alignItems: 'center' },
+  phoneMockup: { width: 180, height: 360, backgroundColor: '#000', borderRadius: 28, padding: 5 },
+  phoneScreen: { flex: 1, backgroundColor: '#FFF', borderRadius: 23, overflow: 'hidden' },
+  dynamicIsland: { alignItems: 'center', paddingTop: 4 },
+  dynamicIslandPill: { width: 50, height: 16, backgroundColor: '#000', borderRadius: 8 },
+  quizContent: { flex: 1, paddingTop: 20 },
+  quizHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8, paddingBottom: 6, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  quizSubject: { fontSize: 8, fontWeight: '700', color: '#0F172A' },
+  quizBadge: { backgroundColor: '#EFF6FF', paddingHorizontal: 4, paddingVertical: 1, borderRadius: 4 },
+  quizBadgeText: { fontSize: 6, fontWeight: '700', color: '#2563EB' },
+  questionCard: { margin: 8, padding: 8, borderRadius: 8, borderWidth: 1, borderColor: '#F1F5F9' },
+  questionLabel: { fontSize: 6, fontWeight: '700', color: '#94A3B8', marginBottom: 2 },
+  questionText: { fontSize: 8, fontWeight: '600', color: '#0F172A', lineHeight: 11 },
+  optionsContainer: { paddingHorizontal: 8, gap: 3 },
+  optionItem: { flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 6, padding: 5 },
+  optionItemCorrect: { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0' },
+  optionBadge: { width: 12, height: 12, borderRadius: 6, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center' },
+  optionBadgeCorrect: { backgroundColor: '#10B981', borderColor: '#10B981' },
+  optionBadgeText: { fontSize: 5, fontWeight: '700', color: '#64748B' },
+  optionText: { fontSize: 7, color: '#475569', flex: 1 },
+  optionTextCorrect: { color: '#065F46', fontWeight: '600' },
+
+  // Features
+  featuresSection: { paddingHorizontal: 24, paddingVertical: 50, maxWidth: 1100, alignSelf: 'center', width: '100%' },
+  featuresTitle: { fontSize: isWeb ? 32 : 26, fontWeight: '800', color: '#0F172A', marginBottom: 32 },
+  featuresTitleLight: { color: '#94A3B8' },
+  featuresGrid: { flexDirection: isWeb && width > 600 ? 'row' : 'column', flexWrap: 'wrap', gap: 14 },
+  featureCard: { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 18, padding: 20, flex: isWeb && width > 600 ? 1 : undefined, minWidth: isWeb && width > 600 ? 220 : undefined, maxWidth: isWeb && width > 600 ? '31%' : undefined },
+  featureIcon: { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
+  featureTitle: { fontSize: 15, fontWeight: '700', color: '#0F172A', marginBottom: 4 },
+  featureDescription: { fontSize: 12, color: '#64748B', lineHeight: 18 },
+
+  // Why Section
+  whySection: { paddingHorizontal: 24, paddingVertical: 60, backgroundColor: '#0F172A' },
+  whyTitle: { fontSize: isWeb ? 32 : 26, fontWeight: '800', color: '#FFF', textAlign: 'center', marginBottom: 40 },
+  whyGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 32 },
+  whyStat: { alignItems: 'center', minWidth: 120 },
+  whyNumber: { fontSize: isWeb ? 48 : 36, fontWeight: '800', color: '#FFF', marginBottom: 4 },
+  whyLabel: { fontSize: 14, color: '#94A3B8', fontWeight: '600' },
+
+  // Pricing CTA
+  pricingCTA: { paddingHorizontal: 24, paddingVertical: 60, backgroundColor: '#F8FAFC', alignItems: 'center' },
+  pricingCTATitle: { fontSize: isWeb ? 32 : 26, fontWeight: '800', color: '#0F172A', textAlign: 'center', marginBottom: 12 },
+  pricingCTASubtitle: { fontSize: 16, color: '#64748B', textAlign: 'center', marginBottom: 32, maxWidth: 500 },
+  pricingCTAButton: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#3B82F6', paddingHorizontal: 32, paddingVertical: 16, borderRadius: 14 },
+  pricingCTAButtonText: { fontSize: 16, fontWeight: '700', color: '#FFF' },
+
+  // CTA
+  ctaSection: { paddingHorizontal: 24, paddingVertical: 50 },
+  ctaCard: { backgroundColor: '#0F172A', borderRadius: 28, padding: 40, alignItems: 'center', maxWidth: 600, alignSelf: 'center', width: '100%' },
+  ctaTitle: { fontSize: isWeb ? 28 : 22, fontWeight: '800', color: '#FFF', textAlign: 'center', marginBottom: 20 },
+  ctaPrimaryButton: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FFF', paddingHorizontal: 28, paddingVertical: 12, borderRadius: 50 },
+  ctaPrimaryButtonText: { color: '#0F172A', fontSize: 13, fontWeight: '700' },
+
+  // Footer
+  footer: { borderTopWidth: 1, borderTopColor: '#E5E7EB', backgroundColor: '#FAFAFA', paddingVertical: 28, alignItems: 'center' },
+  footerLogoContainer: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
+  footerLogo: { fontSize: 14, fontWeight: '700', color: '#0F172A' },
+  footerCopyright: { fontSize: 11, color: '#94A3B8', textAlign: 'center' },
+
+  // PrepAssist Logo Styles
+  logoIcon: { width: 28, height: 28, position: 'relative' },
+  logoArrowOrange: {
+    position: 'absolute',
+    left: 2,
+    top: 4,
+    width: 0,
+    height: 0,
+    borderLeftWidth: 8,
+    borderRightWidth: 8,
+    borderBottomWidth: 20,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderBottomColor: '#F5A623',
+    transform: [{ rotate: '180deg' }]
+  },
+  logoArrowBlue: {
+    position: 'absolute',
+    right: 2,
+    top: 4,
+    width: 0,
+    height: 0,
+    borderLeftWidth: 8,
+    borderRightWidth: 8,
+    borderBottomWidth: 20,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderBottomColor: '#2196F3',
+  },
+  logoTextLight: { fontWeight: '500', color: '#64748B' },
+
+  // Small logo for footer
+  logoIconSmall: { width: 20, height: 20, position: 'relative' },
+  logoArrowOrangeSmall: {
+    position: 'absolute',
+    left: 1,
+    top: 3,
+    width: 0,
+    height: 0,
+    borderLeftWidth: 5,
+    borderRightWidth: 5,
+    borderBottomWidth: 14,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderBottomColor: '#F5A623',
+    transform: [{ rotate: '180deg' }]
+  },
+  logoArrowBlueSmall: {
+    position: 'absolute',
+    right: 1,
+    top: 3,
+    width: 0,
+    height: 0,
+    borderLeftWidth: 5,
+    borderRightWidth: 5,
+    borderBottomWidth: 14,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderBottomColor: '#2196F3',
+  },
+  // Modern Sections
+  modernSectionsContainer: { paddingVertical: 40, gap: 40 },
+  modernSection: { flexDirection: isWeb && width > 768 ? 'row' : 'column', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, paddingVertical: 60, gap: 40, maxWidth: 1100, alignSelf: 'center', width: '100%', borderRadius: 24 },
+  modernSectionDark: { backgroundColor: '#0F172A' },
+  modernSectionRight: { flexDirection: isWeb && width > 768 ? 'row-reverse' : 'column' },
+  modernSectionContent: { flex: 1, maxWidth: 500 },
+  modernTitle: { fontSize: 32, fontWeight: '800', color: '#0F172A', marginBottom: 16, lineHeight: 40 },
+  modernSubtitle: { fontSize: 16, color: '#475569', lineHeight: 26 },
+  modernIconBox: { width: 48, height: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
+  modernIconBoxLight: { backgroundColor: '#DBEAFE' },
+  modernIconBoxDark: { backgroundColor: 'rgba(255,255,255,0.1)' },
+  textWhite: { color: '#FFF' },
+  textGray: { color: '#94A3B8' },
+  modernVisual: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  modernVisualLeft: { alignItems: 'flex-start' },
+  visualCard: { width: '100%', maxWidth: 400, height: 240, borderRadius: 20, padding: 24, justifyContent: 'center', gap: 16 },
+  visualCardLight: { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0' },
+  visualCardDark: { backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+  visualLine: { height: 12, backgroundColor: '#E2E8F0', borderRadius: 6, width: '100%' },
+  visualCircle: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#3B82F6', marginTop: 12 },
+});

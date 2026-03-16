@@ -1,0 +1,692 @@
+/**
+ * BILLING SCREEN - Modern Flat Design
+ * 
+ * Clean, minimal design without gradients or glassmorphism
+ * Direct DodoPayments checkout integration
+ */
+
+import React, { useState, useEffect, useRef } from 'react';
+import {
+    View,
+    Text,
+    StyleSheet,
+    ScrollView,
+    TouchableOpacity,
+    ActivityIndicator,
+    Alert,
+    Linking,
+    Platform,
+    RefreshControl,
+    AppState,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { useTheme } from '../features/Reference/theme/ThemeContext';
+import { useWebStyles } from '../components/WebContainer';
+import { useAuth } from '../context/AuthContext';
+import { useCredits } from '../hooks/useCredits';
+import {
+    getSubscriptionPlans,
+    getCreditPackages,
+    getUserCredits,
+    getTransactionHistory,
+    formatPrice,
+    SubscriptionPlan,
+    CreditPackage,
+    CreditBalance,
+    CREDIT_COSTS,
+} from '../services/billingService';
+
+// ============== LIVE CHECKOUT URLs ==============
+const CHECKOUT_URLS = {
+    CREDITS_50: 'https://checkout.dodopayments.com/buy/pdt_0NWfLXQfz6P34vDNgGT6J',
+    CREDITS_120: 'https://checkout.dodopayments.com/buy/pdt_0NWfLZHVYcwnA37B60iio',
+    CREDITS_300: 'https://checkout.dodopayments.com/buy/pdt_0NWfLbT49dqQm9bNqVVjS',
+    CREDITS_750: 'https://checkout.dodopayments.com/buy/pdt_0NWfNy0Q3SrufzdKZlE2G',
+    CREDITS_1200: 'https://checkout.dodopayments.com/buy/pdt_0NWfO0TYn9murkxJ3FWbC',
+    CREDITS_1999: 'https://checkout.dodopayments.com/buy/pdt_0NWfO2IA7c8uoxbXKPkFP',
+    TEST_5_RUPEES: 'https://checkout.dodopayments.com/buy/pdt_0NXVmuekVgYecsGGsW7li',
+    STORAGE_PLAN: 'https://checkout.dodopayments.com/buy/pdt_0NaAamwV8NdMAXe0v2yBx', // ₹199/month Cloud Storage
+};
+
+export default function BillingScreen() {
+    const { theme, isDark } = useTheme();
+    const { horizontalPadding } = useWebStyles();
+    const navigation = useNavigation<any>();
+    const { user } = useAuth();
+
+    const { credits: realTimeCredits, planType: realTimePlan, refreshCredits } = useCredits();
+    const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    const [transactions, setTransactions] = useState<any[]>([]);
+    const [activeTab, setActiveTab] = useState<'credits' | 'history'>('credits');
+    const pendingCheckout = useRef(false);
+    const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const scrollRef = useRef<ScrollView>(null);
+
+    const [selectedPack, setSelectedPack] = useState<{ name: string; credits: number; price: string; url: string } | null>(null);
+
+    const userEmail = user?.email || '';
+
+    useEffect(() => {
+        loadData();
+    }, []);
+
+    // Mobile: Refresh credits when app returns to foreground after checkout
+    useEffect(() => {
+        if (Platform.OS === 'web') return;
+
+        const subscription = AppState.addEventListener('change', (nextAppState) => {
+            if (nextAppState === 'active' && pendingCheckout.current) {
+                console.log('[Billing] App returned to foreground after checkout, refreshing credits...');
+                pendingCheckout.current = false;
+                // Poll a few times to allow webhook processing
+                let pollCount = 0;
+                pollIntervalRef.current = setInterval(async () => {
+                    pollCount++;
+                    console.log(`[Billing] Mobile poll ${pollCount}/15...`);
+                    await refreshCredits();
+                    await loadData();
+                    if (pollCount >= 15) {
+                        if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+                        pollIntervalRef.current = null;
+                    }
+                }, 2000);
+            }
+        });
+
+        return () => {
+            subscription.remove();
+            if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+        };
+    }, [refreshCredits]);
+
+    const loadData = async () => {
+        try {
+            const [_, transactionsData] = await Promise.all([
+                refreshCredits(),
+                getTransactionHistory(10),
+            ]);
+            setTransactions(transactionsData);
+        } catch (error) {
+            console.error('[Billing] Load error:', error);
+        } finally {
+            setLoading(false);
+            setRefreshing(false);
+        }
+    };
+
+    // Auto-refresh when tab becomes visible (Enterprise logic)
+    useEffect(() => {
+        if (Platform.OS === 'web') {
+            const handleVisibilityChange = () => {
+                if (document.visibilityState === 'visible') {
+                    console.log('[Billing] Tab visible, refreshing credits...');
+                    refreshCredits();
+                    loadData();
+                }
+            };
+            document.addEventListener('visibilitychange', handleVisibilityChange);
+            return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+        }
+    }, []);
+
+    const openCheckout = async (url: string, productName: string) => {
+        if (!userEmail) {
+            Alert.alert('Login Required', 'Please login to make a purchase.');
+            return;
+        }
+
+        try {
+            let redirectUrl = 'https://my-m79q0zn05-vamsis-projects-4d71922c.vercel.app/home';
+            if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location) {
+                redirectUrl = window.location.origin + '/home';
+            }
+            const fullUrl = Platform.OS === 'web'
+                ? `${url}?email=${encodeURIComponent(userEmail)}&redirect_url=${encodeURIComponent(redirectUrl)}`
+                : `${url}?email=${encodeURIComponent(userEmail)}`;
+
+            console.log('[Billing] Opening checkout:', fullUrl);
+
+            if (Platform.OS === 'web') {
+                window.open(fullUrl, '_blank');
+
+                // Smart Polling (Enterprise logic) - check every 2s for 1 minute
+                let pollCount = 0;
+                const pollInterval = setInterval(async () => {
+                    pollCount++;
+                    console.log(`[Billing] Enterprise Poll ${pollCount}/30...`);
+                    await refreshCredits();
+                    await loadData();
+
+                    if (pollCount >= 30) clearInterval(pollInterval);
+                }, 2000);
+
+            } else {
+                pendingCheckout.current = true;
+                await Linking.openURL(fullUrl);
+            }
+        } catch (err) {
+            console.error('[Billing] Error:', err);
+            Alert.alert('Error', 'Failed to open checkout. Please try again.');
+        }
+    };
+
+    // Select a pack and scroll to top
+    const selectPack = (name: string, credits: number, price: string, url: string) => {
+        setSelectedPack({ name, credits, price, url });
+        scrollRef.current?.scrollTo({ y: 0, animated: true });
+    };
+
+    // ============== SELECTED PACK BANNER ==============
+    const renderSelectedPack = () => {
+        if (!selectedPack) return null;
+        return (
+            <View style={[styles.selectedPackCard, { backgroundColor: isDark ? '#1A2340' : '#F0EAE0', borderColor: '#2A7DEB' }]}>
+                <View style={styles.selectedPackContent}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                        <View style={{ backgroundColor: '#2A7DEB', padding: 8, borderRadius: 10 }}>
+                            <Ionicons name="flash" size={18} color="#FFF" />
+                        </View>
+                        <View>
+                            <Text style={{ fontSize: 13, color: isDark ? '#94A3B8' : '#64748B' }}>Selected Pack</Text>
+                            <Text style={{ fontSize: 16, fontWeight: '700', color: isDark ? '#FFF' : '#1A1A1A' }}>
+                                {selectedPack.name}
+                            </Text>
+                        </View>
+                    </View>
+                    <Text style={{ fontSize: 20, fontWeight: '800', color: '#2A7DEB' }}>
+                        {selectedPack.price}
+                    </Text>
+                </View>
+                <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
+                    <TouchableOpacity
+                        style={{ flex: 1, paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: isDark ? '#334155' : '#CBD5E1', alignItems: 'center' }}
+                        onPress={() => setSelectedPack(null)}
+                    >
+                        <Text style={{ fontWeight: '600', color: isDark ? '#94A3B8' : '#64748B' }}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={{ flex: 2, backgroundColor: '#2A7DEB', paddingVertical: 12, borderRadius: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                        onPress={() => openCheckout(selectedPack.url, selectedPack.name)}
+                    >
+                        <Ionicons name="card" size={16} color="#FFF" />
+                        <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 15 }}>Pay {selectedPack.price}</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        );
+    };
+
+    // ============== CREDITS CARD ==============
+    const renderCreditsCard = () => (
+        <View style={[styles.creditsCard, { backgroundColor: isDark ? '#1A1A2E' : '#FFFFFF', borderColor: isDark ? '#2A2A4E' : '#E8E8E8' }]}>
+            <View style={styles.creditsCardContent}>
+                <View>
+                    <Text style={[styles.creditsLabel, { color: isDark ? '#888' : '#666' }]}>Available Credits</Text>
+                    <Text style={[styles.creditsNumber, { color: isDark ? '#FFF' : '#1A1A1A' }]}>
+                        {realTimeCredits || 0}
+                    </Text>
+                </View>
+                <View style={[styles.planBadge, { backgroundColor: realTimePlan === 'pro' ? '#2A7DEB' : realTimePlan === 'basic' ? '#10B981' : '#6B7280' }]}>
+                    <Ionicons name="flash" size={14} color="#FFF" />
+                    <Text style={styles.planBadgeText}>
+                        {(realTimePlan || '').toUpperCase()}
+                    </Text>
+                </View>
+            </View>
+            <Text style={[styles.creditsSubtext, { color: isDark ? '#666' : '#888' }]}>
+                {realTimePlan === 'pro' ? '400 credits/month' : realTimePlan === 'basic' ? '200 credits/month' : 'Subscribe for monthly credits'}
+            </Text>
+        </View>
+    );
+
+    // ============== TABS ==============
+    const renderTabs = () => (
+        <View style={[styles.tabsContainer, { backgroundColor: isDark ? '#1A1A2E' : '#F5F5F5', borderColor: isDark ? '#2A2A4E' : '#E8E8E8' }]}>
+            {[
+                { id: 'credits', label: 'Credits', icon: 'flash-outline' },
+                { id: 'history', label: 'History', icon: 'time-outline' },
+            ].map((tab) => (
+                <TouchableOpacity
+                    key={tab.id}
+                    style={[
+                        styles.tab,
+                        activeTab === tab.id && { backgroundColor: isDark ? '#2A2A4E' : '#FFFFFF' }
+                    ]}
+                    onPress={() => setActiveTab(tab.id as any)}
+                >
+                    <Ionicons
+                        name={tab.icon as any}
+                        size={18}
+                        color={activeTab === tab.id ? (isDark ? '#2A7DEB' : '#2A7DEB') : (isDark ? '#666' : '#999')}
+                    />
+                    <Text style={[
+                        styles.tabText,
+                        { color: activeTab === tab.id ? (isDark ? '#FFF' : '#1A1A1A') : (isDark ? '#666' : '#999') }
+                    ]}>
+                        {tab.label}
+                    </Text>
+                </TouchableOpacity>
+            ))}
+        </View>
+    );
+
+
+
+    // ============== CREDIT PACKAGES ==============
+    const renderCreditsPackages = () => (
+        <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: isDark ? '#FFF' : '#1A1A1A' }]}>
+                Buy Extra Credits
+            </Text>
+            <Text style={[styles.sectionSubtitle, { color: isDark ? '#666' : '#888' }]}>
+                One-time purchase • Credits never expire
+            </Text>
+
+            {/* Test Package Section */}
+            <View style={{ marginBottom: 16 }}>
+                <TouchableOpacity
+                    style={[styles.testPackageCard, { backgroundColor: isDark ? '#1A1A2E' : '#FFF3F3', borderColor: selectedPack?.url === CHECKOUT_URLS.TEST_5_RUPEES ? '#2A7DEB' : '#EF4444' }]}
+                    onPress={() => selectPack('Quick Test Pack (10 credits)', 10, '₹5', CHECKOUT_URLS.TEST_5_RUPEES)}
+                >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                        <View style={{ backgroundColor: '#EF4444', padding: 8, borderRadius: 10 }}>
+                            <Ionicons name="beaker" size={20} color="#FFF" />
+                        </View>
+                        <View>
+                            <Text style={{ fontWeight: '700', color: isDark ? '#FFF' : '#1A1A1A' }}>Quick Test Pack</Text>
+                            <Text style={{ fontSize: 12, color: isDark ? '#AAA' : '#666' }}>10 credits for testing purposes</Text>
+                        </View>
+                    </View>
+                    <Text style={{ fontSize: 18, fontWeight: '800', color: '#EF4444' }}>₹5</Text>
+                </TouchableOpacity>
+            </View>
+
+            {/* Row 1: Starter packages */}
+            <View style={styles.packagesRow}>
+                {/* 50 Credits */}
+                <TouchableOpacity
+                    style={[styles.packageCard, { backgroundColor: isDark ? '#1A1A2E' : '#FFFFFF', borderColor: selectedPack?.url === CHECKOUT_URLS.CREDITS_50 ? '#2A7DEB' : (isDark ? '#2A2A4E' : '#E8E8E8'), borderWidth: selectedPack?.url === CHECKOUT_URLS.CREDITS_50 ? 2 : 1 }]}
+                    onPress={() => selectPack('50 Credits', 50, '₹99', CHECKOUT_URLS.CREDITS_50)}
+                >
+                    <Text style={[styles.packageCredits, { color: isDark ? '#FFF' : '#1A1A1A' }]}>50</Text>
+                    <Text style={[styles.packageCreditsLabel, { color: isDark ? '#666' : '#888' }]}>credits</Text>
+                    <Text style={[styles.packagePrice, { color: '#10B981' }]}>₹99</Text>
+                    <Text style={[styles.packagePerCredit, { color: isDark ? '#555' : '#AAA' }]}>₹1.98/credit</Text>
+                </TouchableOpacity>
+
+                {/* 120 Credits */}
+                <TouchableOpacity
+                    style={[styles.packageCard, { backgroundColor: isDark ? '#1A1A2E' : '#FFFFFF', borderColor: selectedPack?.url === CHECKOUT_URLS.CREDITS_120 ? '#2A7DEB' : (isDark ? '#2A2A4E' : '#E8E8E8'), borderWidth: selectedPack?.url === CHECKOUT_URLS.CREDITS_120 ? 2 : 1 }]}
+                    onPress={() => selectPack('120 Credits', 120, '₹199', CHECKOUT_URLS.CREDITS_120)}
+                >
+                    <Text style={[styles.packageCredits, { color: isDark ? '#FFF' : '#1A1A1A' }]}>120</Text>
+                    <Text style={[styles.packageCreditsLabel, { color: isDark ? '#666' : '#888' }]}>credits</Text>
+                    <Text style={[styles.packagePrice, { color: '#10B981' }]}>₹199</Text>
+                    <Text style={[styles.packagePerCredit, { color: isDark ? '#555' : '#AAA' }]}>₹1.66/credit</Text>
+                </TouchableOpacity>
+
+                {/* 300 Credits */}
+                <TouchableOpacity
+                    style={[styles.packageCard, { backgroundColor: isDark ? '#1A1A2E' : '#FFFFFF', borderColor: selectedPack?.url === CHECKOUT_URLS.CREDITS_300 ? '#2A7DEB' : (isDark ? '#2A2A4E' : '#E8E8E8'), borderWidth: selectedPack?.url === CHECKOUT_URLS.CREDITS_300 ? 2 : 1 }]}
+                    onPress={() => selectPack('300 Credits', 300, '₹399', CHECKOUT_URLS.CREDITS_300)}
+                >
+                    <Text style={[styles.packageCredits, { color: isDark ? '#FFF' : '#1A1A1A' }]}>300</Text>
+                    <Text style={[styles.packageCreditsLabel, { color: isDark ? '#666' : '#888' }]}>credits</Text>
+                    <Text style={[styles.packagePrice, { color: '#F59E0B' }]}>₹399</Text>
+                    <Text style={[styles.packagePerCredit, { color: isDark ? '#555' : '#AAA' }]}>₹1.33/credit</Text>
+                </TouchableOpacity>
+            </View>
+
+            {/* Row 2: Bulk packages */}
+            <View style={[styles.packagesRow, { marginTop: 12 }]}>
+                {/* 750 Credits */}
+                <TouchableOpacity
+                    style={[styles.packageCard, styles.packageCardPopular, { backgroundColor: isDark ? '#1A1A2E' : '#FFFFFF', borderColor: selectedPack?.url === CHECKOUT_URLS.CREDITS_750 ? '#2A7DEB' : '#2A7DEB' }]}
+                    onPress={() => selectPack('750 Credits', 750, '₹599', CHECKOUT_URLS.CREDITS_750)}
+                >
+                    <View style={styles.saveBadge}>
+                        <Text style={styles.saveBadgeText}>POPULAR</Text>
+                    </View>
+                    <Text style={[styles.packageCredits, { color: isDark ? '#FFF' : '#1A1A1A' }]}>750</Text>
+                    <Text style={[styles.packageCreditsLabel, { color: isDark ? '#666' : '#888' }]}>credits</Text>
+                    <Text style={[styles.packagePrice, { color: '#2A7DEB' }]}>₹599</Text>
+                    <Text style={[styles.packagePerCredit, { color: isDark ? '#555' : '#AAA' }]}>₹0.80/credit</Text>
+                </TouchableOpacity>
+
+                {/* 1200 Credits */}
+                <TouchableOpacity
+                    style={[styles.packageCard, styles.packageCardPopular, { backgroundColor: isDark ? '#1A1A2E' : '#FFFFFF', borderColor: selectedPack?.url === CHECKOUT_URLS.CREDITS_1200 ? '#2A7DEB' : '#10B981' }]}
+                    onPress={() => selectPack('1200 Credits', 1200, '₹999', CHECKOUT_URLS.CREDITS_1200)}
+                >
+                    <View style={[styles.saveBadge, { backgroundColor: '#10B981' }]}>
+                        <Text style={styles.saveBadgeText}>BEST VALUE</Text>
+                    </View>
+                    <Text style={[styles.packageCredits, { color: isDark ? '#FFF' : '#1A1A1A' }]}>1200</Text>
+                    <Text style={[styles.packageCreditsLabel, { color: isDark ? '#666' : '#888' }]}>credits</Text>
+                    <Text style={[styles.packagePrice, { color: '#10B981' }]}>₹999</Text>
+                    <Text style={[styles.packagePerCredit, { color: isDark ? '#555' : '#AAA' }]}>₹0.83/credit</Text>
+                </TouchableOpacity>
+
+                {/* 1999 Credits */}
+                <TouchableOpacity
+                    style={[styles.packageCard, styles.packageCardPopular, { backgroundColor: isDark ? '#1A1A2E' : '#FFFFFF', borderColor: selectedPack?.url === CHECKOUT_URLS.CREDITS_1999 ? '#2A7DEB' : '#F59E0B' }]}
+                    onPress={() => selectPack('1999 Credits', 1999, '₹1499', CHECKOUT_URLS.CREDITS_1999)}
+                >
+                    <View style={[styles.saveBadge, { backgroundColor: '#F59E0B' }]}>
+                        <Text style={styles.saveBadgeText}>ULTIMATE</Text>
+                    </View>
+                    <Text style={[styles.packageCredits, { color: isDark ? '#FFF' : '#1A1A1A' }]}>1999</Text>
+                    <Text style={[styles.packageCreditsLabel, { color: isDark ? '#666' : '#888' }]}>credits</Text>
+                    <Text style={[styles.packagePrice, { color: '#F59E0B' }]}>₹1499</Text>
+                    <Text style={[styles.packagePerCredit, { color: isDark ? '#555' : '#AAA' }]}>₹0.75/credit</Text>
+                </TouchableOpacity>
+            </View>
+
+            {/* Credit Usage Guide */}
+            <View style={[styles.usageGuide, { backgroundColor: isDark ? '#1A1A2E' : '#F9FAFB', borderColor: isDark ? '#2A2A4E' : '#E5E7EB', marginTop: 20 }]}>
+                <Text style={[styles.usageTitle, { color: isDark ? '#FFF' : '#1A1A1A' }]}>
+                    <Ionicons name="information-circle" size={16} /> Credit Usage
+                </Text>
+                <View style={styles.usageGrid}>
+                    {Object.entries(CREDIT_COSTS).map(([feature, cost]) => (
+                        <View key={feature} style={styles.usageItem}>
+                            <Text style={[styles.usageFeature, { color: isDark ? '#AAA' : '#666' }]}>
+                                {feature.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                            </Text>
+                            <Text style={[styles.usageCost, { color: isDark ? '#2A7DEB' : '#2A7DEB' }]}>
+                                {cost} credit{cost > 1 ? 's' : ''}
+                            </Text>
+                        </View>
+                    ))}
+                </View>
+            </View>
+        </View>
+    );
+
+    // ============== TRANSACTION HISTORY ==============
+    const renderHistory = () => (
+        <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: isDark ? '#FFF' : '#1A1A1A' }]}>
+                Transaction History
+            </Text>
+
+            {transactions.length === 0 ? (
+                <View style={[styles.emptyState, { backgroundColor: isDark ? '#1A1A2E' : '#F9FAFB', borderColor: isDark ? '#2A2A4E' : '#E8E8E8' }]}>
+                    <Ionicons name="receipt-outline" size={48} color={isDark ? '#444' : '#CCC'} />
+                    <Text style={[styles.emptyText, { color: isDark ? '#666' : '#888' }]}>No transactions yet</Text>
+                </View>
+            ) : (
+                transactions.map((tx) => (
+                    <View
+                        key={tx.id}
+                        style={[styles.transactionRow, { backgroundColor: isDark ? '#1A1A2E' : '#FFFFFF', borderColor: isDark ? '#2A2A4E' : '#E8E8E8' }]}
+                    >
+                        <View style={[styles.txIcon, { backgroundColor: tx.credits > 0 ? '#D1FAE5' : '#FEE2E2' }]}>
+                            <Ionicons
+                                name={tx.credits > 0 ? 'add' : 'remove'}
+                                size={16}
+                                color={tx.credits > 0 ? '#059669' : '#DC2626'}
+                            />
+                        </View>
+                        <View style={styles.txDetails}>
+                            <Text style={[styles.txDescription, { color: isDark ? '#FFF' : '#1A1A1A' }]}>
+                                {tx.description || tx.feature_used || tx.transaction_type}
+                            </Text>
+                            <Text style={[styles.txDate, { color: isDark ? '#666' : '#888' }]}>
+                                {new Date(tx.created_at).toLocaleDateString()}
+                            </Text>
+                        </View>
+                        <Text style={[styles.txCredits, { color: tx.credits > 0 ? '#059669' : '#DC2626' }]}>
+                            {tx.credits > 0 ? '+' : ''}{tx.credits}
+                        </Text>
+                    </View>
+                ))
+            )}
+        </View>
+    );
+
+    // ============== LOADING STATE ==============
+    if (loading) {
+        return (
+            <SafeAreaView style={[styles.container, { backgroundColor: isDark ? '#0F0F1A' : '#F9FAFB' }]}>
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color="#2A7DEB" />
+                    <Text style={[styles.loadingText, { color: isDark ? '#666' : '#888' }]}>Loading...</Text>
+                </View>
+            </SafeAreaView>
+        );
+    }
+
+    // ============== MAIN RENDER ==============
+    return (
+        <SafeAreaView style={[styles.container, { backgroundColor: isDark ? '#0F0F1A' : '#F9FAFB' }]}>
+            <ScrollView
+                ref={scrollRef}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={[styles.scrollContent, { paddingHorizontal: horizontalPadding || 20 }]}
+                refreshControl={
+                    <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadData(); }} />
+                }
+            >
+                {/* Header */}
+                <View style={styles.header}>
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backButton, { backgroundColor: isDark ? '#1A1A2E' : '#FFFFFF' }]}>
+                        <Ionicons name="arrow-back" size={20} color={isDark ? '#FFF' : '#1A1A1A'} />
+                    </TouchableOpacity>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <Text style={[styles.headerTitle, { color: isDark ? '#FFF' : '#1A1A1A' }]}>Billing & Credits</Text>
+                        <View style={{ backgroundColor: '#EF4444', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
+                            <Text style={{ color: '#FFF', fontSize: 10, fontWeight: '800' }}>DEBUG</Text>
+                        </View>
+                    </View>
+                    <View style={{ width: 40 }} />
+                </View>
+
+                {/* EMERGENCY TEST PACK AT TOP */}
+                <TouchableOpacity
+                    style={{
+                        backgroundColor: '#EF4444',
+                        marginHorizontal: 20,
+                        padding: 12,
+                        borderRadius: 12,
+                        flexDirection: 'row',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        marginBottom: 16
+                    }}
+                    onPress={() => selectPack('Quick Test Pack (10 credits)', 10, '₹5', CHECKOUT_URLS.TEST_5_RUPEES)}
+                >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                        <Ionicons name="flash" size={20} color="#FFF" />
+                        <View>
+                            <Text style={{ color: '#FFF', fontWeight: '800' }}>₹5 TEST PACK (10 CREDITS)</Text>
+                            <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 11 }}>Tap here to test payment flow</Text>
+                        </View>
+                    </View>
+                    <Ionicons name="arrow-forward" size={20} color="#FFF" />
+                </TouchableOpacity>
+
+                {/* Credits Card */}
+                {renderCreditsCard()}
+
+                {/* Cloud Storage Subscription */}
+                <View style={[styles.subscriptionCard, { backgroundColor: isDark ? '#1A2340' : '#F0F7FF', borderColor: '#2A7DEB' }]}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+                        <View style={{ backgroundColor: '#2A7DEB', padding: 10, borderRadius: 12 }}>
+                            <Ionicons name="cloud-upload" size={22} color="#FFF" />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                            <Text style={{ fontSize: 17, fontWeight: '700', color: isDark ? '#FFF' : '#1A1A1A' }}>
+                                Cloud Storage Plan
+                            </Text>
+                            <Text style={{ fontSize: 13, color: isDark ? '#94A3B8' : '#64748B', marginTop: 2 }}>
+                                Unlimited notes & cloud sync
+                            </Text>
+                        </View>
+                        <View style={{ alignItems: 'flex-end' }}>
+                            <Text style={{ fontSize: 22, fontWeight: '800', color: '#2A7DEB' }}>₹199</Text>
+                            <Text style={{ fontSize: 11, color: isDark ? '#94A3B8' : '#64748B' }}>/month</Text>
+                        </View>
+                    </View>
+
+                    <View style={{ gap: 6, marginBottom: 14 }}>
+                        {['Unlimited notes creation', 'PDF storage & downloads', 'Cloud sync across devices'].map((feature) => (
+                            <View key={feature} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                <Ionicons name="checkmark-circle" size={16} color="#10B981" />
+                                <Text style={{ fontSize: 13, color: isDark ? '#CBD5E1' : '#475569' }}>{feature}</Text>
+                            </View>
+                        ))}
+                    </View>
+
+                    <TouchableOpacity
+                        style={{ backgroundColor: '#2A7DEB', paddingVertical: 13, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                        onPress={() => openCheckout(CHECKOUT_URLS.STORAGE_PLAN, 'Cloud Storage Plan')}
+                    >
+                        <Ionicons name="card" size={18} color="#FFF" />
+                        <Text style={{ color: '#FFF', fontSize: 15, fontWeight: '700' }}>Get Subscription - ₹199/month</Text>
+                    </TouchableOpacity>
+                </View>
+
+                {/* Selected Pack Banner */}
+                {renderSelectedPack()}
+
+                {/* Tabs */}
+                {renderTabs()}
+
+                {/* Content */}
+
+                {activeTab === 'credits' && renderCreditsPackages()}
+                {activeTab === 'history' && renderHistory()}
+
+                {/* Payment Info */}
+                <View style={[styles.paymentInfo, { borderColor: isDark ? '#2A2A4E' : '#E8E8E8' }]}>
+                    <Ionicons name="shield-checkmark" size={16} color="#10B981" />
+                    <Text style={[styles.paymentInfoText, { color: isDark ? '#666' : '#888' }]}>
+                        Secure payments via DodoPayments • UPI & Cards accepted
+                    </Text>
+                </View>
+            </ScrollView>
+        </SafeAreaView>
+    );
+}
+
+// ============== STYLES ==============
+const styles = StyleSheet.create({
+    container: { flex: 1 },
+    scrollContent: { paddingBottom: 40 },
+    loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+    loadingText: { marginTop: 12, fontSize: 14 },
+
+    // Header
+    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 },
+    backButton: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+    headerTitle: { fontSize: 20, fontWeight: '700' },
+
+    // Credits Card
+    creditsCard: { borderRadius: 16, padding: 20, marginBottom: 20, borderWidth: 1 },
+    creditsCardContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+    creditsLabel: { fontSize: 13, fontWeight: '500', marginBottom: 4 },
+    creditsNumber: { fontSize: 40, fontWeight: '800' },
+    planBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, gap: 4 },
+    planBadgeText: { color: '#FFF', fontSize: 11, fontWeight: '700' },
+    creditsSubtext: { fontSize: 12, marginTop: 12 },
+
+    // Tabs
+    tabsContainer: { flexDirection: 'row', borderRadius: 12, padding: 4, marginBottom: 24, borderWidth: 1 },
+    tab: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 8 },
+    tabText: { fontSize: 13, fontWeight: '600' },
+
+    // Section
+    section: { marginBottom: 28 },
+    sectionTitle: { fontSize: 18, fontWeight: '700', marginBottom: 4 },
+    sectionSubtitle: { fontSize: 13, marginBottom: 16 },
+
+    // Plan Cards
+    planCard: { borderRadius: 16, padding: 20, marginBottom: 16, borderWidth: 1, position: 'relative' },
+    proPlanCard: { borderWidth: 2 },
+    popularTag: { position: 'absolute', top: -1, right: 16, backgroundColor: '#2A7DEB', paddingHorizontal: 12, paddingVertical: 4, borderBottomLeftRadius: 8, borderBottomRightRadius: 8 },
+    popularTagText: { color: '#FFF', fontSize: 10, fontWeight: '700' },
+    planHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 },
+    planTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
+    planIcon: { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+    planName: { fontSize: 20, fontWeight: '700' },
+    priceRow: { flexDirection: 'row', alignItems: 'baseline' },
+    planPrice: { fontSize: 32, fontWeight: '800' },
+    planPeriod: { fontSize: 14, marginLeft: 4 },
+    creditsBadge: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, alignItems: 'center' },
+    creditsBadgeNumber: { fontSize: 24, fontWeight: '800' },
+    creditsBadgeText: { fontSize: 11, fontWeight: '600' },
+    planFeatures: { marginBottom: 16 },
+    featureRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
+    featureText: { fontSize: 14, flex: 1 },
+    subscribeButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderRadius: 12 },
+    subscribeButtonText: { color: '#FFF', fontSize: 15, fontWeight: '700' },
+
+    // Credit Packages
+    packagesRow: { flexDirection: 'row', gap: 12, marginBottom: 20 },
+    packageCard: { flex: 1, borderRadius: 16, padding: 16, alignItems: 'center', borderWidth: 1, position: 'relative' },
+    packageCardPopular: { borderWidth: 2 },
+    saveBadge: { position: 'absolute', top: -8, backgroundColor: '#2A7DEB', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
+    saveBadgeText: { color: '#FFF', fontSize: 8, fontWeight: '700' },
+    packageCredits: { fontSize: 28, fontWeight: '800', marginTop: 8 },
+    packageCreditsLabel: { fontSize: 11, marginBottom: 8 },
+    packagePrice: { fontSize: 20, fontWeight: '700' },
+    packagePerCredit: { fontSize: 10, marginTop: 4 },
+
+    // Usage Guide
+    usageGuide: { borderRadius: 12, padding: 16, borderWidth: 1 },
+    usageTitle: { fontSize: 14, fontWeight: '600', marginBottom: 12 },
+    usageGrid: { gap: 8 },
+    usageItem: { flexDirection: 'row', justifyContent: 'space-between' },
+    usageFeature: { fontSize: 13 },
+    usageCost: { fontSize: 13, fontWeight: '600' },
+
+    // Empty State
+    emptyState: { padding: 40, alignItems: 'center', borderRadius: 16, borderWidth: 1 },
+    emptyText: { marginTop: 12, fontSize: 14 },
+
+    // Transaction Row
+    transactionRow: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 12, marginBottom: 8, borderWidth: 1 },
+    txIcon: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+    txDetails: { flex: 1 },
+    txDescription: { fontSize: 14, fontWeight: '500' },
+    txDate: { fontSize: 12, marginTop: 2 },
+    txCredits: { fontSize: 16, fontWeight: '700' },
+
+    // Payment Info
+    paymentInfo: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 16, borderTopWidth: 1, marginTop: 20 },
+    paymentInfoText: { fontSize: 12 },
+    testPackageCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: 16,
+        borderRadius: 16,
+        borderWidth: 2,
+        borderStyle: 'dashed',
+    },
+
+    // Subscription Card
+    subscriptionCard: {
+        borderRadius: 16,
+        padding: 16,
+        marginBottom: 20,
+        borderWidth: 2,
+    },
+
+    // Selected Pack
+    selectedPackCard: {
+        borderRadius: 16,
+        padding: 16,
+        marginBottom: 20,
+        borderWidth: 2,
+    },
+    selectedPackContent: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+});

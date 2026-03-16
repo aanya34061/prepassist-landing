@@ -1,0 +1,7 @@
+steps:
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['build', '-t', 'asia-south1-docker.pkg.dev/$PROJECT_ID/user-apps/app', '.']
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['push', 'asia-south1-docker.pkg.dev/$PROJECT_ID/user-apps/app']
+- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  args: ['run', 'deploy', 'app', '--image', 'asia-south1-docker.pkg.dev/$PROJECT_ID/user-apps/app', '--region', 'asia-south1']
