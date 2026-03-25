@@ -96,6 +96,25 @@ export default function QuestionBankScreen({ navigation }) {
     }, [])
   );
 
+  // Realtime: auto-refresh when question_sets table changes in Supabase
+  useEffect(() => {
+    const channel = supabase
+      .channel('question_sets_changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'question_sets' },
+        () => {
+          console.log('[QuestionBank] Realtime update detected, refreshing...');
+          fetchQuestionSets();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   const onRefresh = async () => {
     setRefreshing(true);
     await Promise.all([loadQuestions(), fetchQuestionSets()]);
