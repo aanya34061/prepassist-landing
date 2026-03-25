@@ -37,7 +37,6 @@ import { syncNoteToFirebase } from '../../../services/firebaseNotesSync';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
-import { extractTextFromPDF } from '../../../utils/pdfTextExtract';
 
 const OCR_API_KEY = 'K85553321788957';
 const OCR_API_URL = 'https://api.ocr.space/parse/image';
@@ -183,65 +182,47 @@ export const CreateNoteScreen: React.FC<CreateNoteScreenProps> = ({ navigation, 
             };
             setNoteSources(prev => [...prev, newSource]);
 
-            // Extract text from PDF in background
+            // OCR the PDF in background
             setProcessingPdfIds(prev => new Set(prev).add(sourceId));
             try {
-                // Read file as base64 first (needed for both pdfjs-dist and OCR)
                 const base64 = await readFileAsBase64(asset.uri);
                 const sizeInKB = (base64.length * 3) / 4 / 1024;
-
-                // Try native PDF text extraction first (pdfjs-dist, no OCR artifacts)
-                let extractedText = '';
-                try {
-                    extractedText = await extractTextFromPDF(base64, 'base64');
-                } catch (e) {
-                    console.log('Native PDF extraction failed, will try OCR:', e);
+                if (sizeInKB > 1024) {
+                    Alert.alert('PDF Too Large', 'PDF exceeds 1MB limit for OCR. The file has been attached but text could not be extracted.');
+                    setProcessingPdfIds(prev => { const s = new Set(prev); s.delete(sourceId); return s; });
+                    return;
                 }
 
-                if (extractedText && extractedText.trim().length >= 50) {
-                    console.log('Native PDF extraction succeeded:', extractedText.length, 'chars');
+                const formData = new FormData();
+                formData.append('base64Image', `data:application/pdf;base64,${base64}`);
+                formData.append('apikey', OCR_API_KEY);
+                formData.append('language', 'eng');
+                formData.append('isOverlayRequired', 'false');
+                formData.append('detectOrientation', 'true');
+                formData.append('scale', 'true');
+                formData.append('OCREngine', '2');
+                formData.append('filetype', 'PDF');
+
+                const response = await fetch(OCR_API_URL, {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'Accept': 'application/json' },
+                });
+                const ocrResult = await response.json();
+
+                if (ocrResult.OCRExitCode === 1 && ocrResult.ParsedResults?.length > 0) {
+                    const fullText = ocrResult.ParsedResults
+                        .map((page: any) => page.ParsedText || '')
+                        .join('\n\n')
+                        .trim();
+
                     setNoteSources(prev => prev.map(s =>
-                        s.id === sourceId ? { ...s, content: extractedText } : s
+                        s.id === sourceId ? { ...s, content: fullText || '(No text extracted)' } : s
                     ));
                 } else {
-                    // Fall back to OCR for scanned/image PDFs
-                    if (sizeInKB > 1024) {
-                        Alert.alert('PDF Too Large', 'PDF exceeds 1MB limit for OCR. The file has been attached but text could not be extracted.');
-                        setProcessingPdfIds(prev => { const s = new Set(prev); s.delete(sourceId); return s; });
-                        return;
-                    }
-
-                    const formData = new FormData();
-                    formData.append('base64Image', `data:application/pdf;base64,${base64}`);
-                    formData.append('apikey', OCR_API_KEY);
-                    formData.append('language', 'eng');
-                    formData.append('isOverlayRequired', 'false');
-                    formData.append('detectOrientation', 'true');
-                    formData.append('scale', 'true');
-                    formData.append('OCREngine', '2');
-                    formData.append('filetype', 'PDF');
-
-                    const response = await fetch(OCR_API_URL, {
-                        method: 'POST',
-                        body: formData,
-                        headers: { 'Accept': 'application/json' },
-                    });
-                    const ocrResult = await response.json();
-
-                    if (ocrResult.OCRExitCode === 1 && ocrResult.ParsedResults?.length > 0) {
-                        const fullText = ocrResult.ParsedResults
-                            .map((page: any) => page.ParsedText || '')
-                            .join('\n\n')
-                            .trim();
-
-                        setNoteSources(prev => prev.map(s =>
-                            s.id === sourceId ? { ...s, content: fullText || '(No text extracted)' } : s
-                        ));
-                    } else {
-                        setNoteSources(prev => prev.map(s =>
-                            s.id === sourceId ? { ...s, content: '(OCR failed — PDF attached without text)' } : s
-                        ));
-                    }
+                    setNoteSources(prev => prev.map(s =>
+                        s.id === sourceId ? { ...s, content: '(OCR failed — PDF attached without text)' } : s
+                    ));
                 }
             } catch (err) {
                 console.error('PDF text extraction error:', err);
