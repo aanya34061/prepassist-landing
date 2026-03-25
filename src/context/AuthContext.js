@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useState, useEffect, useContext, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import { supabase } from '../lib/supabase';
@@ -64,6 +64,10 @@ export const AuthProvider = ({ children }) => {
   const [isFirstLaunch, setIsFirstLaunch] = useState(true);
   const [isGuestMode, setIsGuestMode] = useState(false);
 
+  // Refs to avoid stale closures in the auth listener
+  const isGuestModeRef = useRef(false);
+  const isSigningInRef = useRef(false);
+
   // Check for existing user session on app launch
   useEffect(() => {
     checkUserSession();
@@ -72,11 +76,17 @@ export const AuthProvider = ({ children }) => {
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('[AuthContext] Auth state changed:', event);
 
+      // Skip events while we're handling sign-in directly (prevents race conditions)
+      if (isSigningInRef.current) {
+        console.log('[AuthContext] Skipping auth event during direct sign-in');
+        return;
+      }
+
       if (event === 'SIGNED_IN' && session?.user) {
         await handleSupabaseUser(session.user, session);
       } else if (event === 'SIGNED_OUT') {
-        // Only clear if user is not in guest mode
-        if (!isGuestMode) {
+        // Only clear if user is not in guest mode (use ref to avoid stale closure)
+        if (!isGuestModeRef.current) {
           await clearUserData();
         }
       }
@@ -109,6 +119,7 @@ export const AuthProvider = ({ children }) => {
 
       setUser(userData);
       setIsGuestMode(false);
+      isGuestModeRef.current = false;
       setIsFirstLaunch(false);
 
       console.log('[AuthContext] Supabase user signed in:', userData.email);
@@ -122,6 +133,7 @@ export const AuthProvider = ({ children }) => {
     await AsyncStorage.removeItem(SUPABASE_SESSION_KEY);
     setUser(null);
     setIsGuestMode(false);
+    isGuestModeRef.current = false;
   };
 
   const checkUserSession = async () => {
@@ -158,6 +170,7 @@ export const AuthProvider = ({ children }) => {
           } else {
             setUser(userData);
             setIsGuestMode(userData.isGuest || false);
+            isGuestModeRef.current = userData.isGuest || false;
             console.log('[AuthContext] User restored from storage:', userData.email || userData.name);
           }
         } catch (e) {
@@ -168,6 +181,7 @@ export const AuthProvider = ({ children }) => {
           const userData = JSON.parse(guestUser);
           setUser(userData);
           setIsGuestMode(true);
+          isGuestModeRef.current = true;
           console.log('[AuthContext] Guest user restored:', userData.name);
         } catch (e) {
           console.error('[AuthContext] Error parsing guest user:', e);
@@ -191,6 +205,7 @@ export const AuthProvider = ({ children }) => {
       await AsyncStorage.setItem('@has_launched', 'true');
       setUser(userToStore);
       setIsGuestMode(userData.isGuest || false);
+      isGuestModeRef.current = userData.isGuest || false;
       setIsFirstLaunch(false);
     } catch (error) {
       console.error('[AuthContext] Error signing in:', error);
@@ -216,6 +231,7 @@ export const AuthProvider = ({ children }) => {
       await AsyncStorage.setItem('@has_launched', 'true');
       setUser(guestUser);
       setIsGuestMode(true);
+      isGuestModeRef.current = true;
       setIsFirstLaunch(false);
       return guestUser;
     } catch (error) {
@@ -230,6 +246,7 @@ export const AuthProvider = ({ children }) => {
     // Clear local state immediately so UI updates instantly
     setUser(null);
     setIsGuestMode(false);
+    isGuestModeRef.current = false;
 
     // Clear storage in parallel
     await Promise.all([
@@ -252,6 +269,9 @@ export const AuthProvider = ({ children }) => {
     try {
       console.log('[AuthContext] Signing in with Supabase:', email);
 
+      // Flag to prevent the onAuthStateChange listener from racing with us
+      isSigningInRef.current = true;
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -266,12 +286,16 @@ export const AuthProvider = ({ children }) => {
         throw new Error('No user data returned from sign in');
       }
 
-      // The onAuthStateChange listener will handle setting the user
+      // Directly handle the user (like signUpWithEmail does) for instant state update
+      await handleSupabaseUser(data.user, data.session);
+
       console.log('[AuthContext] Sign in successful:', data.user.email);
       return data.user;
     } catch (error) {
       console.error('[AuthContext] Error in signInWithEmail:', error);
       throw error;
+    } finally {
+      isSigningInRef.current = false;
     }
   };
 

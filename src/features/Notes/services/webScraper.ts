@@ -64,6 +64,14 @@ const CORS_PROXIES = [
         getUrl: (url: string) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
     },
     {
+        name: 'CORSProxy.org',
+        getUrl: (url: string) => `https://corsproxy.org/?${encodeURIComponent(url)}`,
+    },
+    {
+        name: 'CodeTabs',
+        getUrl: (url: string) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+    },
+    {
         name: 'ThingProxy',
         getUrl: (url: string) => `https://thingproxy.freeboard.io/fetch/${url}`,
     },
@@ -81,37 +89,36 @@ const CORS_PROXIES = [
 async function fetchWithProxies(url: string): Promise<string> {
     const errors: string[] = [];
     const isMobile = Platform.OS !== 'web';
+    const MIN_HTML_LENGTH = 100;
 
-    // On mobile, try direct fetch first (no CORS needed)
-    if (isMobile) {
-        try {
-            console.log('[WebScraper] Trying direct fetch (mobile)...');
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 15000);
+    // Try direct fetch first (works on mobile always; on web works for same-origin or CORS-enabled sites)
+    try {
+        console.log(`[WebScraper] Trying direct fetch (${isMobile ? 'mobile' : 'web'})...`);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-            const response = await fetch(url, {
-                signal: controller.signal,
-                headers: {
-                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                    'Accept-Language': 'en-US,en;q=0.5',
-                    'User-Agent': 'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
-                },
-            });
+        const response = await fetch(url, {
+            signal: controller.signal,
+            headers: {
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.5',
+                ...(isMobile ? { 'User-Agent': 'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36' } : {}),
+            },
+        });
 
-            clearTimeout(timeoutId);
+        clearTimeout(timeoutId);
 
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-            const html = await response.text();
-            if (!html || html.length < 500) throw new Error('Response too short');
+        const html = await response.text();
+        if (!html || html.length < MIN_HTML_LENGTH) throw new Error('Response too short');
 
-            console.log(`[WebScraper] ✓ Direct fetch succeeded, got ${html.length} chars`);
-            return html;
-        } catch (error: any) {
-            const errorMsg = error.name === 'AbortError' ? 'Timeout' : error.message;
-            errors.push(`Direct: ${errorMsg}`);
-            console.warn('[WebScraper] Direct fetch failed:', errorMsg);
-        }
+        console.log(`[WebScraper] ✓ Direct fetch succeeded, got ${html.length} chars`);
+        return html;
+    } catch (error: any) {
+        const errorMsg = error.name === 'AbortError' ? 'Timeout' : error.message;
+        errors.push(`Direct: ${errorMsg}`);
+        console.warn('[WebScraper] Direct fetch failed:', errorMsg);
     }
 
     // Fall back to CORS proxies (needed on web, backup for mobile)
@@ -136,7 +143,7 @@ async function fetchWithProxies(url: string): Promise<string> {
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
             const html = await response.text();
-            if (!html || html.length < 500) throw new Error('Response too short');
+            if (!html || html.length < MIN_HTML_LENGTH) throw new Error('Response too short');
 
             if (html.includes('captcha') || html.includes('blocked') || html.includes('Access Denied')) {
                 throw new Error('Site blocked access');
@@ -374,11 +381,16 @@ export const smartScrape = async (url: string): Promise<ScrapedArticle> => {
 
     } catch (error: any) {
         console.error('[WebScraper] Error:', error);
+        // Return partial result with URL info so the article can still be saved
+        const domain = extractDomain(url);
         return {
             url,
-            title: 'Failed to Scrape Article',
-            content: '',
-            contentBlocks: [],
+            title: domain,
+            content: `Saved from ${domain}. Content could not be extracted automatically.`,
+            contentBlocks: [{
+                type: 'paragraph' as const,
+                content: `Saved from ${domain}. Content could not be extracted automatically.`,
+            }],
             error: error.message || 'Unknown error occurred. The website may be blocking automated access.'
         };
     }

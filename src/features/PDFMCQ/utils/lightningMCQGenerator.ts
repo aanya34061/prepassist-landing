@@ -14,6 +14,7 @@ import {
     ACTIVE_MODELS,
     PARALLEL_CONFIG,
 } from '../../../services/aiService';
+import { extractTextFromPDF } from '../../../utils/pdfTextExtract';
 
 // OCR API Configuration
 const OCR_API_KEY = 'K85553321788957';
@@ -108,6 +109,33 @@ async function extractTextWithOCR(
     onStatus?: StatusCallback
 ): Promise<string> {
     const startTime = Date.now();
+    const isPDF = mimeType === 'application/pdf';
+
+    // For PDFs, try native text extraction first (no OCR artifacts)
+    if (isPDF) {
+        onStatus?.({
+            stage: 'extracting',
+            progress: 10,
+            message: '📄 Extracting text from PDF...',
+            startTime,
+        });
+        try {
+            const nativeText = await extractTextFromPDF(base64Data, 'base64');
+            if (nativeText && nativeText.trim().length >= 50) {
+                console.log('[extractTextWithOCR] Native PDF extraction succeeded:', nativeText.length, 'chars');
+                onStatus?.({
+                    stage: 'extracting',
+                    progress: 30,
+                    message: `📝 Extracted ${nativeText.length} characters`,
+                    startTime,
+                });
+                return nativeText;
+            }
+            console.log('[extractTextWithOCR] Native extraction insufficient, falling back to OCR');
+        } catch (e: any) {
+            console.log('[extractTextWithOCR] Native extraction failed, falling back to OCR:', e.message);
+        }
+    }
 
     onStatus?.({
         stage: 'extracting',
@@ -115,8 +143,6 @@ async function extractTextWithOCR(
         message: '🔍 Scanning document with OCR...',
         startTime,
     });
-
-    const isPDF = mimeType === 'application/pdf';
     const dataPrefix = isPDF
         ? 'data:application/pdf;base64,'
         : `data:${mimeType || 'image/png'};base64,`;

@@ -1,5 +1,6 @@
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
+import { extractTextFromPDF } from './pdfTextExtract';
 
 // Free OCR.space API key (get your own at https://ocr.space/ocrapi)
 const OCR_API_KEY = 'K85553321788957';
@@ -46,6 +47,22 @@ export const pickPDF = async () => {
  */
 const scanWithOCR = async (fileUri, fileName, mimeType, onProgress) => {
   try {
+    // For PDFs, try native text extraction first (no OCR needed for text-based PDFs)
+    const isPDF = fileName?.toLowerCase().endsWith('.pdf') || mimeType === 'application/pdf';
+    if (isPDF) {
+      onProgress?.('Extracting text from PDF...');
+      try {
+        const nativeText = await extractTextFromPDF(fileUri, 'uri');
+        if (nativeText && nativeText.trim().length >= 50) {
+          console.log('[pdfParser] Native PDF extraction succeeded:', nativeText.length, 'chars');
+          return { success: true, text: nativeText };
+        }
+        console.log('[pdfParser] Native extraction insufficient, falling back to OCR');
+      } catch (e) {
+        console.log('[pdfParser] Native extraction failed, falling back to OCR:', e.message);
+      }
+    }
+
     onProgress?.('Reading file...');
 
     // Read file as base64
