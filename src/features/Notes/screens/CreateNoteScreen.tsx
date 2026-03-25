@@ -414,20 +414,20 @@ export const CreateNoteScreen: React.FC<CreateNoteScreenProps> = ({ navigation, 
                         content: scrapedContent,
                         domain,
                     });
-                    if (saveResult.isDuplicate) {
-                        Alert.alert('Article Saved', `Content extracted from ${domain}.\nThis article was already in your Saved Articles.`, [
-                            { text: 'OK' },
-                            { text: 'View Saved Articles', onPress: () => navigation.navigate('SavedArticles') },
-                        ]);
+                    const msg = saveResult.isDuplicate
+                        ? `Content extracted from ${domain}. Already in Saved Articles.`
+                        : `Article saved to Saved Articles!`;
+                    if (Platform.OS === 'web') {
+                        const goToSaved = window.confirm(`${msg}\n\nView Saved Articles?`);
+                        if (goToSaved) navigation.navigate('SavedArticles');
                     } else {
-                        Alert.alert('Article Saved', `Content extracted and saved to your Saved Articles.`, [
+                        Alert.alert('Article Saved', msg, [
                             { text: 'OK' },
                             { text: 'View Saved Articles', onPress: () => navigation.navigate('SavedArticles') },
                         ]);
                     }
                 } catch (e) {
                     console.warn('[CreateNote] Save to Saved Articles failed:', e);
-                    Alert.alert('Content Extracted', `${result.contentBlocks.length} blocks from ${domain}`);
                 }
             }
         } catch (error) {
