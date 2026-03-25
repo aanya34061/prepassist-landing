@@ -67,20 +67,6 @@ const FEATURES = [
   { id: 'aimindmap',     icon: 'git-network-outline',     title: 'AI Mind Map',           desc: 'AI-powered visual diagrams',                    screen: 'AIMindMap' },
 ];
 
-const WEB_FEATURES = [
-  { id: 'pdfmcq',        icon: 'document-text-outline',   title: 'PDF to MCQ',                desc: 'Convert any PDF into practice quizzes',         screen: 'PDFMCQGenerator' },
-  { id: 'alertnotes',     icon: 'notifications-outline',   title: 'Alerts on Notes',           desc: 'Get reminders for your important notes',         screen: 'Notes' },
-  { id: 'notessummary',   icon: 'sparkles-outline',        title: 'Notes Summarisation',       desc: 'AI-powered summaries of your notes',             screen: 'AINotesMaker' },
-  { id: 'essay',          icon: 'create-outline',          title: 'Mains Answer Evaluation',   desc: 'Get your answers reviewed & scored',             screen: 'Essay' },
-  { id: 'aimcq',          icon: 'flash-outline',           title: 'AI based MCQs for Prelims', desc: 'AI-generated MCQs for prelims practice',         screen: 'AIMCQGenerator' },
-  { id: 'unlimited',      icon: 'infinite-outline',        title: 'Unlimited Prelims Questions', desc: 'Endless practice questions for prelims',       screen: 'Config' },
-  { id: 'aimindmap',      icon: 'git-network-outline',     title: 'AI Mind Maps',              desc: 'AI-powered visual learning diagrams',            screen: 'AIMindMap' },
-  { id: 'articles',       icon: 'newspaper-outline',       title: 'Daily News',                desc: 'Stay updated with daily news & analysis',        screen: 'Articles' },
-  { id: 'questionbank',   icon: 'library-outline',         title: 'Question Bank',             desc: 'Your saved questions collection',                screen: 'QuestionBank' },
-  { id: 'progress',       icon: 'analytics-outline',       title: 'Progress Analytics',        desc: 'Track your preparation journey',                 screen: 'Progress' },
-  { id: 'roadmap',        icon: 'map-outline',             title: 'AI Roadmap',                desc: 'AI-powered personalized study roadmap',          screen: 'ComingSoon', comingSoon: true },
-];
-
 // ── Flash Cards helpers ───────────────────────────────────────────────────────
 const FLASH_CARD_LIMIT = 15;
 const LEARNED_CARDS_KEY = '@upsc_flash_learned';
@@ -350,7 +336,7 @@ export default function NewHomeScreen({ navigation }) {
         {/* ── Feature Grid ───────────────────────────────────────────── */}
         <Text style={[styles.sectionTitle, isDark && styles.textWhite, { marginBottom: 14 }]}>Start Learning</Text>
         <View style={styles.grid}>
-          {(Platform.OS === 'web' ? WEB_FEATURES : FEATURES).map((feature) => (
+          {FEATURES.map((feature) => (
             <TouchableOpacity
               key={feature.id}
               style={[

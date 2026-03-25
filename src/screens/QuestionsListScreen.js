@@ -12,8 +12,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Print from 'expo-print';
-import * as Sharing from 'expo-sharing';
+let Print;
+let Sharing;
+if (Platform.OS !== 'web') {
+  Print = require('expo-print');
+  Sharing = require('expo-sharing');
+}
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../features/Reference/theme/ThemeContext';
 import { useWebStyles } from '../components/WebContainer';
@@ -219,8 +223,17 @@ export default function QuestionsListScreen({ navigation, route }) {
     `;
 
     try {
-      const { uri } = await Print.printToFileAsync({ html: htmlContent });
-      await Sharing.shareAsync(uri);
+      if (Platform.OS === 'web') {
+        const printWindow = window.open('', '_blank');
+        if (printWindow) {
+          printWindow.document.write(htmlContent);
+          printWindow.document.close();
+          printWindow.print();
+        }
+      } else {
+        const { uri } = await Print.printToFileAsync({ html: htmlContent });
+        await Sharing.shareAsync(uri);
+      }
     } catch (error) {
       Alert.alert('Error', 'Failed to generate PDF');
     }

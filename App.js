@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { ActivityIndicator, View, StyleSheet, Alert, Modal, Text } from 'react-native';
+import { ActivityIndicator, View, StyleSheet, Alert, Modal, Text, Platform } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -369,6 +369,8 @@ export default function App() {
   }, [handleSharedUrl]);
 
   React.useEffect(() => {
+    if (Platform.OS === 'web') return;
+
     // Schedule daily 8 AM news notification
     scheduleNewsNotification();
 

@@ -9,6 +9,7 @@ import {
   Alert,
   TextInput,
   Modal,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -19,8 +20,12 @@ import {
   exportProgress,
 } from '../utils/roadmapStorage';
 import { AVAILABLE_OPTIONALS } from '../data/roadmapData';
-import * as Sharing from 'expo-sharing';
-import * as FileSystem from 'expo-file-system/legacy';
+let Sharing;
+let FileSystem;
+if (Platform.OS !== 'web') {
+  Sharing = require('expo-sharing');
+  FileSystem = require('expo-file-system/legacy');
+}
 import { useTheme } from '../features/Reference/theme/ThemeContext';
 import { useWebStyles } from '../components/WebContainer';
 
@@ -53,12 +58,24 @@ export default function UserPreferencesScreen({ navigation }) {
     try {
       const data = await exportProgress();
       if (data) {
-        const fileUri = FileSystem.documentDirectory + 'upsc_progress_backup.json';
-        await FileSystem.writeAsStringAsync(fileUri, data);
-        await Sharing.shareAsync(fileUri, {
-          mimeType: 'application/json',
-          dialogTitle: 'Export Your Progress',
-        });
+        if (Platform.OS === 'web') {
+          const blob = new Blob([data], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'upsc_progress_backup.json';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        } else {
+          const fileUri = FileSystem.documentDirectory + 'upsc_progress_backup.json';
+          await FileSystem.writeAsStringAsync(fileUri, data);
+          await Sharing.shareAsync(fileUri, {
+            mimeType: 'application/json',
+            dialogTitle: 'Export Your Progress',
+          });
+        }
       }
     } catch (error) {
       Alert.alert('Error', 'Failed to export data. Please try again.');
