@@ -133,9 +133,21 @@ export function useCredits() {
             });
 
             if (!rpcError && data) {
-                // RPC returned data successfully
                 const creditData = typeof data === 'object' ? data : { credits: data };
-                const fetchedCredits = creditData.credits ?? creditData.current_credits ?? 0;
+
+                // If RPC says no subscription exists, this is a new user — initialize them
+                if (creditData.has_subscription === false) {
+                    console.log('[Credits] No subscription found via RPC, initializing new user:', userId);
+                    const initResult = await initializeUserSubscription(userId);
+                    setCredits(initResult.credits);
+                    setPlanType(initResult.planType);
+                    setInitialized(true);
+                    return;
+                }
+
+                // RPC returned data for an existing subscriber
+                // Prefer current_credits (DB column name) over credits (may be 0 incorrectly)
+                const fetchedCredits = creditData.current_credits ?? creditData.credits ?? 0;
                 const fetchedPlan = resolvePlanType(creditData.plan_type);
                 setCredits(fetchedCredits);
                 setPlanType(fetchedPlan);
@@ -237,6 +249,35 @@ export function useCredits() {
                 } else {
                     Alert.alert('Error', 'Failed to deduct credits. Please try again.');
                 }
+                return false;
+            }
+
+            // Check if RPC returned a failure in the response data
+            if (data?.success === false || data?.error) {
+                console.error('[Credits] deduct_credits returned failure:', data.error);
+
+                // If no subscription exists, initialize one and retry
+                if (data.error?.includes('No active subscription')) {
+                    console.log('[Credits] No subscription found, initializing and retrying...');
+                    await initializeUserSubscription(userId);
+
+                    // Retry deduction after initialization
+                    const { data: retryData, error: retryError } = await supabase.rpc('deduct_credits', {
+                        p_user_id: userId,
+                        p_credits: cost,
+                        p_feature: feature,
+                        p_description: `Used ${cost} credits for ${feature.replace('_', ' ')}`
+                    });
+
+                    if (!retryError && retryData?.success !== false && !retryData?.error) {
+                        const retryBalance = retryData?.balance ?? (credits - cost);
+                        setCredits(retryBalance);
+                        console.log(`[Credits] Retry succeeded. Remaining: ${retryBalance}`);
+                        return true;
+                    }
+                }
+
+                Alert.alert('Error', 'Failed to deduct credits. Please try again.');
                 return false;
             }
 

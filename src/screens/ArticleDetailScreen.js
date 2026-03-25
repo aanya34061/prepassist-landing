@@ -17,10 +17,11 @@ import { useTheme } from '../features/Reference/theme/ThemeContext';
 import { useWebStyles } from '../components/WebContainer';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
+import * as WebBrowser from 'expo-web-browser';
 import { supabase } from '../lib/supabase';
 
 export default function ArticleDetailScreen({ route, navigation }) {
-  const { articleId } = route.params;
+  const { articleId, preloadedArticle } = route.params;
   const { theme, isDark } = useTheme();
   const { horizontalPadding } = useWebStyles();
   const [article, setArticle] = useState(null);
@@ -35,9 +36,61 @@ export default function ArticleDetailScreen({ route, navigation }) {
   const [feedbackAnimations, setFeedbackAnimations] = useState({}); // { mcqId: Animated.Value }
   const [shuffledMcqs, setShuffledMcqs] = useState({}); // { mcqId: { shuffledOptions: { A: text, B: text, C: text, D: text }, correctAnswer: 'A' } }
 
+  // Parse a raw content string into renderable blocks (paragraphs, headings, bullet lists)
+  const parseContentToBlocks = (content) => {
+    if (!content) return null;
+    if (Array.isArray(content)) return content;
+    if (typeof content !== 'string') return [{ type: 'paragraph', content: String(content) }];
+
+    const blocks = [];
+    const rawParts = content.split(/\n\n+/);
+    rawParts.forEach((part) => {
+      const trimmed = part.trim();
+      if (!trimmed) return;
+
+      // Markdown heading: ## Heading or # Heading
+      if (/^#{1,3}\s+/.test(trimmed)) {
+        const level = (trimmed.match(/^(#{1,3})/)?.[1] || '#').length;
+        blocks.push({ type: 'heading', level, content: trimmed.replace(/^#{1,3}\s+/, '').replace(/\*\*/g, '').trim() });
+        return;
+      }
+
+      // Bold-only line acting as heading: **Title**
+      if (/^\*\*[^*]+\*\*$/.test(trimmed)) {
+        blocks.push({ type: 'heading', level: 2, content: trimmed.replace(/\*\*/g, '').trim() });
+        return;
+      }
+
+      // Bullet list: lines starting with * or -
+      const lines = trimmed.split('\n');
+      const bulletLines = lines.filter(l => /^\s*[\*\-]\s/.test(l));
+      if (bulletLines.length > 0 && bulletLines.length >= lines.length - 1) {
+        const items = lines
+          .map(l => l.replace(/^\s*[\*\-]\s+/, '').replace(/\*\*/g, '').trim())
+          .filter(Boolean);
+        blocks.push({ type: 'unordered-list', items });
+        return;
+      }
+
+      // Regular paragraph — strip markdown bold markers
+      blocks.push({ type: 'paragraph', content: trimmed.replace(/\*\*/g, '') });
+    });
+
+    return blocks.length > 0 ? blocks : [{ type: 'paragraph', content: content.replace(/\*\*/g, '') }];
+  };
+
   useEffect(() => {
-    fetchArticle();
-    fetchMCQs();
+    if (preloadedArticle) {
+      setArticle({
+        ...preloadedArticle,
+        content: parseContentToBlocks(preloadedArticle.content),
+        gsPaper: preloadedArticle.source || preloadedArticle.gsPaper,
+      });
+      setLoading(false);
+    } else {
+      fetchArticle();
+      fetchMCQs();
+    }
   }, [articleId]);
 
   const fetchArticle = async () => {
@@ -93,8 +146,28 @@ export default function ArticleDetailScreen({ route, navigation }) {
   };
 
   const handleOpenSource = () => {
-    if (article.sourceUrl) {
-      Linking.openURL(article.sourceUrl);
+    const url = article.sourceUrl || '';
+    const gsPaper = article.gsPaper || '';
+    const title = article.title || '';
+
+    // Open the stored URL directly if available
+    if (url && url.startsWith('http')) {
+      if (Platform.OS === 'web') {
+        window.open(url, '_blank');
+      } else {
+        WebBrowser.openBrowserAsync(url);
+      }
+      return;
+    }
+
+    // No URL stored — search Google with title + publication name
+    const publication = gsPaper === 'HT' ? 'Hindustan Times' : 'The Hindu';
+    const q = encodeURIComponent(`${title} ${publication}`);
+    const searchUrl = `https://www.google.com/search?q=${q}`;
+    if (Platform.OS === 'web') {
+      window.open(searchUrl, '_blank');
+    } else {
+      WebBrowser.openBrowserAsync(searchUrl);
     }
   };
 
@@ -174,10 +247,16 @@ export default function ArticleDetailScreen({ route, navigation }) {
     if (!dateString) return '';
     const date = new Date(dateString);
     return date.toLocaleDateString('en-IN', {
-      day: 'numeric',
+      day: '2-digit',
       month: 'long',
       year: 'numeric',
     });
+  };
+
+  const isVideoUrl = (url) => {
+    if (!url) return false;
+    const u = url.toLowerCase();
+    return u.includes('youtube.com') || u.includes('youtu.be');
   };
 
   // Shuffle array function (Fisher-Yates algorithm)
@@ -512,7 +591,7 @@ export default function ArticleDetailScreen({ route, navigation }) {
           <Ionicons name="arrow-back" size={22} color={theme.colors.text} />
         </TouchableOpacity>
         <View style={styles.headerActions}>
-          {article.sourceUrl && (
+          {article.sourceUrl && !isVideoUrl(article.sourceUrl) && (
             <TouchableOpacity
               style={[styles.actionButton, { backgroundColor: theme.colors.surface }]}
               onPress={handleOpenSource}
@@ -590,77 +669,68 @@ export default function ArticleDetailScreen({ route, navigation }) {
           )}
         </View>
 
-        {/* Summary */}
-        {article.summary && (
-          <View style={[styles.summaryCard, { backgroundColor: theme.colors.surface }]}>
-            <View style={styles.summaryHeader}>
-              <Ionicons name="bulb-outline" size={18} color={theme.colors.primary} />
-              <Text style={[styles.summaryTitle, { color: theme.colors.text }]}>Key Takeaway</Text>
-            </View>
-            <View style={styles.summaryContent}>
-              {article.summary.split('\n').map((line, index) => {
-                // Remove all asterisks/stars from the line
-                const cleanLine = line.replace(/\*\*/g, '').replace(/\*/g, '').trim();
+        {/* Full Article Body — renders content blocks if available, otherwise summary as full article text */}
+        <View style={styles.articleBody}>
+          {article.content && Array.isArray(article.content) && article.content.length > 0
+            ? article.content.map((block, index) => renderContentBlock(block, index))
+            : article.summary
+              ? article.summary.split('\n').map((line, index) => {
+                  const cleanLine = line.replace(/\*\*/g, '').trim();
 
-                // Skip empty lines
-                if (!cleanLine) return null;
+                  if (!cleanLine) return <View key={index} style={{ height: 8 }} />;
 
-                // Check if it's a numbered list item (starts with number and period)
-                const numberMatch = cleanLine.match(/^(\d+)\.\s*(.+)$/);
-
-                if (numberMatch) {
-                  const [, number, text] = numberMatch;
-                  return (
-                    <View key={index} style={styles.summaryListItem}>
-                      <Text style={[styles.summaryNumber, { color: theme.colors.primary }]}>
-                        {number}.
-                      </Text>
-                      <Text style={[styles.summaryItemText, { color: theme.colors.textSecondary }]}>
-                        {text}
-                      </Text>
-                    </View>
+                  // Section headings
+                  const sectionHeadings = [
+                    'What Happened', 'Background & Context', 'Key Details',
+                    'Analysis & Significance', 'UPSC Relevance', 'Background',
+                    'Context', 'Analysis', 'Significance',
+                  ];
+                  const isSectionHeading = sectionHeadings.some(
+                    h => cleanLine === h || cleanLine.startsWith(h + ':')
                   );
-                }
+                  if (isSectionHeading) {
+                    return (
+                      <View key={index} style={{ marginTop: 22, marginBottom: 4 }}>
+                        <Text style={[styles.articleSectionHeading, { color: theme.colors.primary }]}>
+                          {cleanLine}
+                        </Text>
+                        <View style={[styles.sectionDivider, { backgroundColor: theme.colors.primary }]} />
+                      </View>
+                    );
+                  }
 
-                // Regular paragraph line
-                return (
-                  <Text
-                    key={index}
-                    style={[styles.summaryText, { color: theme.colors.textSecondary }]}
-                  >
-                    {cleanLine}
-                  </Text>
-                );
-              })}
-            </View>
-          </View>
-        )}
+                  // Bullet point: "* Key: Value"
+                  const bulletMatch = cleanLine.match(/^\*\s+(.+)$/);
+                  if (bulletMatch) {
+                    const text = bulletMatch[1];
+                    const colonIdx = text.indexOf(':');
+                    const hasBoldKey = colonIdx > 0 && colonIdx < 50;
+                    return (
+                      <View key={index} style={styles.articleBulletRow}>
+                        <Text style={[styles.articleBullet, { color: theme.colors.primary }]}>{'•'}</Text>
+                        <Text style={[styles.articleBulletText, { color: theme.colors.text }]}>
+                          {hasBoldKey ? (
+                            <>
+                              <Text style={{ fontWeight: '700' }}>{text.slice(0, colonIdx + 1)}</Text>
+                              {text.slice(colonIdx + 1)}
+                            </>
+                          ) : text}
+                        </Text>
+                      </View>
+                    );
+                  }
 
-        {/* Generate MCQs Button */}
-        {/*
-        <TouchableOpacity
-          style={[styles.generateMCQsButton, { backgroundColor: theme.colors.primary }]}
-          onPress={handleGenerateMCQs}
-          disabled={generatingMCQs || mcqs.length > 0}
-        >
-          {generatingMCQs ? (
-            <>
-              <ActivityIndicator size="small" color="#FFFFFF" />
-              <Text style={styles.generateMCQsButtonText}>Generating MCQs...</Text>
-            </>
-          ) : mcqs.length > 0 ? (
-            <>
-              <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" />
-              <Text style={styles.generateMCQsButtonText}>MCQs Generated ({mcqs.length})</Text>
-            </>
-          ) : (
-            <>
-              <Ionicons name="create-outline" size={20} color="#FFFFFF" />
-              <Text style={styles.generateMCQsButtonText}>Generate MCQs</Text>
-            </>
-          )}
-        </TouchableOpacity>
-        */}
+                  // Regular paragraph
+                  return (
+                    <Text key={index} style={[styles.articleBodyParagraph, { color: theme.colors.text }]}>
+                      {cleanLine}
+                    </Text>
+                  );
+                })
+              : null
+          }
+        </View>
+
 
         {/* MCQs Section */}
         {mcqsLoading ? (
@@ -844,21 +914,6 @@ export default function ArticleDetailScreen({ route, navigation }) {
           </View>
         ) : null}
 
-        {/* Content */}
-
-        {/* Source Link */}
-        {article.sourceUrl && (
-          <TouchableOpacity
-            style={[styles.sourceButton, { backgroundColor: theme.colors.surface }]}
-            onPress={handleOpenSource}
-          >
-            <Ionicons name="link-outline" size={20} color={theme.colors.primary} />
-            <Text style={[styles.sourceButtonText, { color: theme.colors.primary }]}>
-              Read Original Article
-            </Text>
-            <Ionicons name="open-outline" size={16} color={theme.colors.primary} />
-          </TouchableOpacity>
-        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -1030,10 +1085,34 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     letterSpacing: 0.1,
   },
+  articleParagraph: {
+    fontSize: 15,
+    lineHeight: 27,
+    marginBottom: 10,
+    letterSpacing: 0.1,
+  },
+  sectionHeading: {
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+  },
+  sectionDivider: {
+    height: 2,
+    width: 36,
+    borderRadius: 2,
+    marginTop: 4,
+    opacity: 0.7,
+  },
   summaryListItem: {
     flexDirection: 'row',
-    marginBottom: 14,
+    marginBottom: 6,
     paddingRight: 8,
+  },
+  summaryBullet: {
+    fontSize: 15,
+    fontWeight: '700',
+    minWidth: 20,
+    lineHeight: 26,
   },
   summaryNumber: {
     fontSize: 15,
@@ -1242,6 +1321,54 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     marginTop: 4,
+  },
+  articleBody: {
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  readOriginalBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    marginBottom: 28,
+  },
+  readOriginalText: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  articleSectionHeading: {
+    fontSize: 17,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+    marginBottom: 4,
+  },
+  articleBodyParagraph: {
+    fontSize: 16,
+    lineHeight: 27,
+    letterSpacing: -0.2,
+    marginBottom: 14,
+  },
+  articleBulletRow: {
+    flexDirection: 'row',
+    marginBottom: 10,
+    marginLeft: 4,
+  },
+  articleBullet: {
+    fontSize: 16,
+    fontWeight: '700',
+    width: 20,
+    lineHeight: 27,
+  },
+  articleBulletText: {
+    flex: 1,
+    fontSize: 16,
+    lineHeight: 27,
+    letterSpacing: -0.2,
   },
 });
 

@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   ScrollView,
   Modal,
-  // TextInput, // Replaced
   Alert,
   KeyboardAvoidingView,
   Platform,

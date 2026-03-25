@@ -32,13 +32,19 @@ export const requestNotificationPermissions = async () => {
     return false;
   }
 
-  // Set up Android notification channel
+  // Set up Android notification channels
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync('daily-reminder', {
       name: 'Daily Reminders',
       importance: Notifications.AndroidImportance.HIGH,
       vibrationPattern: [0, 250, 250, 250],
       lightColor: '#007AFF',
+    });
+    await Notifications.setNotificationChannelAsync('daily-news', {
+      name: 'Daily News Update',
+      importance: Notifications.AndroidImportance.HIGH,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: '#2A7DEB',
     });
   }
 
@@ -81,6 +87,44 @@ export const scheduleDailyReminder = async (hour = 9, minute = 0) => {
     return true;
   } catch (error) {
     console.error('Error scheduling reminder:', error);
+    return false;
+  }
+};
+
+// Schedule daily 8 AM news notification
+export const scheduleNewsNotification = async () => {
+  try {
+    const hasPermission = await requestNotificationPermissions();
+    if (!hasPermission) return false;
+
+    // Cancel any existing news notifications first
+    const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+    for (const n of scheduled) {
+      if (n.content.data?.type === 'daily-news') {
+        await Notifications.cancelScheduledNotificationAsync(n.identifier);
+      }
+    }
+
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: 'Today\'s News is Ready',
+        body: 'Read The Hindu headlines with UPSC analysis for today.',
+        sound: true,
+        priority: Notifications.AndroidNotificationPriority.HIGH,
+        data: { type: 'daily-news', screen: 'Articles' },
+        channelId: 'daily-news',
+      },
+      trigger: {
+        hour: 8,
+        minute: 0,
+        repeats: true,
+      },
+    });
+
+    console.log('[News] Daily 8 AM notification scheduled');
+    return true;
+  } catch (error) {
+    console.error('[News] Error scheduling news notification:', error);
     return false;
   }
 };

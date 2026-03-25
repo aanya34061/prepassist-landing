@@ -324,6 +324,33 @@ export const AuthProvider = ({ children }) => {
         console.log('[AuthContext] User signed in immediately after signup');
         // Directly handle the user to ensure state update
         await handleSupabaseUser(data.user, data.session);
+
+        // Initialize 10 free credits for new user
+        try {
+          const { error: creditError } = await supabase.rpc('add_credits', {
+            p_user_id: data.user.id,
+            p_credits: 10,
+            p_transaction_type: 'signup_bonus',
+            p_payment_id: null,
+            p_description: 'Welcome bonus - 10 free credits'
+          });
+          if (creditError) {
+            console.error('[AuthContext] Failed to add signup credits via RPC:', creditError.message);
+            // Fallback: direct insert
+            await supabase.from('user_subscriptions').upsert({
+              user_id: data.user.id,
+              plan_type: 'free',
+              current_credits: 10,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            }, { onConflict: 'user_id' });
+          } else {
+            console.log('[AuthContext] Signup bonus: 10 free credits added');
+          }
+        } catch (e) {
+          console.error('[AuthContext] Credit init error:', e);
+        }
+
         return data.user;
       }
 

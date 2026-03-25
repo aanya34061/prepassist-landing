@@ -153,14 +153,13 @@ export default function HomeScreen({ navigation }) {
       gradient: ['#10B981', '#059669'],
       screen: 'AINotesMaker',
     },
-    // 8. Question Bank
     {
-      id: 'questionpaper',
-      icon: 'documents-outline',
+      id: 'questionbank',
+      icon: 'library-outline',
       title: 'Question Bank',
-      desc: 'Practice Questions',
-      gradient: ['#F59E0B', '#D97706'],
-      screen: 'QuestionSetList',
+      desc: 'Saved questions',
+      gradient: ['#8B5CF6', '#7C3AED'],
+      screen: 'QuestionBank',
     },
     {
       id: 'progress',

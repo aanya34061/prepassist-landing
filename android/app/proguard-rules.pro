@@ -12,12 +12,3 @@
 -keep class com.facebook.react.turbomodule.** { *; }
 
 # Add any project specific keep options here:
-
-# Keep vector icon fonts and React Native image/font handling
--keep class com.facebook.react.views.text.** { *; }
--keep class com.facebook.react.views.image.** { *; }
--keepclassmembers class com.facebook.react.modules.fresco.** { *; }
-
-# Hermes
--keep class com.facebook.hermes.unicode.** { *; }
--keep class com.facebook.jni.** { *; }

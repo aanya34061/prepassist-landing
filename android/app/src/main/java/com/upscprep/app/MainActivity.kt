@@ -1,7 +1,5 @@
 package com.upscprep.app
 
-import android.content.Intent
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 
@@ -18,41 +16,7 @@ class MainActivity : ReactActivity() {
     // coloring the background, status bar, and navigation bar.
     // This is required for expo-splash-screen.
     setTheme(R.style.AppTheme);
-    // Convert SEND intent to VIEW deep link before React Native initializes
-    val converted = convertSendToViewIntent(intent)
-    if (converted != null) {
-      setIntent(converted)
-    }
     super.onCreate(null)
-  }
-
-  override fun onNewIntent(intent: Intent) {
-    val converted = convertSendToViewIntent(intent)
-    if (converted != null) {
-      setIntent(converted)
-      super.onNewIntent(converted)
-    } else {
-      super.onNewIntent(intent)
-    }
-  }
-
-  /**
-   * Convert ACTION_SEND intents (shared URLs from other apps) into a VIEW deep link
-   * that React Native Linking can handle: upscprep://shared?text=<encoded_text>
-   */
-  private fun convertSendToViewIntent(intent: Intent?): Intent? {
-    if (intent?.action == Intent.ACTION_SEND && intent.type == "text/plain") {
-      val sharedText = intent.getStringExtra(Intent.EXTRA_TEXT)
-      if (!sharedText.isNullOrEmpty()) {
-        val encoded = Uri.encode(sharedText)
-        val deepLink = Uri.parse("upscprep://shared?text=$encoded")
-        val viewIntent = Intent(Intent.ACTION_VIEW, deepLink)
-        viewIntent.addCategory(Intent.CATEGORY_BROWSABLE)
-        viewIntent.addCategory(Intent.CATEGORY_DEFAULT)
-        return viewIntent
-      }
-    }
-    return null
   }
 
   /**

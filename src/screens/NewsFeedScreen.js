@@ -8,30 +8,26 @@ import {
   ActivityIndicator,
   RefreshControl,
   Platform,
-  Image,
   Linking,
   ScrollView,
   TextInput,
   Alert,
+  Modal,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { Calendar } from 'react-native-calendars';
+
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../features/Reference/theme/ThemeContext';
 import { useWebStyles } from '../components/WebContainer';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SmartTextInput } from '../components/SmartTextInput';
-import { getMobileApiEndpoint } from '../config/api';
+import * as WebBrowser from 'expo-web-browser';
 import { getSavedArticles, deleteSavedArticle } from '../services/savedArticlesService';
 import { supabase } from '../lib/supabase';
 
 const FILTERS = {
-  sources: ['The Hindu', 'The Economic Times', 'Press Information Bureau'],
-  sourceShort: {
-    'The Hindu': 'TH',
-    'The Economic Times': 'ET',
-    'Press Information Bureau': 'PIB'
-  },
   subjects: [
     'All',
     'Polity',
@@ -44,13 +40,39 @@ const FILTERS = {
   ],
 };
 
-const SOURCE_LOGOS = {
-  'The Hindu': require('../../assets/logos/the_hindu.png'),
-  'The Economic Times': require('../../assets/logos/economic_times.png'),
-  'Press Information Bureau': require('../../assets/logos/pib.png'),
-  'TH': require('../../assets/logos/the_hindu.png'),
-  'ET': require('../../assets/logos/economic_times.png'),
-  'PIB': require('../../assets/logos/pib.png'),
+const SECTION_COLORS = {
+  'Polity': '#2A7DEB',
+  'Economy': '#10B981',
+  'Geography': '#8B5CF6',
+  'History': '#F59E0B',
+  'Science & Technology': '#06B6D4',
+  'Environment': '#22C55E',
+  'Current Affairs': '#EF4444',
+};
+
+const SOURCE_NAMES = {
+  'TH': 'The Hindu',
+  'HT': 'Hindustan Times',
+  'ET': 'Economic Times',
+  'PIB': 'PIB',
+  'CA': 'PrepAssist AI',
+};
+
+const SKIP_HEADINGS = new Set([
+  'What Happened', 'Background & Context', 'Key Details',
+  'Analysis & Significance', 'UPSC Relevance', 'Background',
+  'Context', 'Analysis', 'Significance',
+]);
+
+const getFirstParagraph = (text) => {
+  if (!text) return '';
+  const lines = text.replace(/\*\*/g, '').split('\n');
+  for (const line of lines) {
+    const clean = line.replace(/^\s*[\*\-]\s+/, '').trim();
+    if (!clean || clean.length < 25 || SKIP_HEADINGS.has(clean)) continue;
+    return clean;
+  }
+  return text.replace(/\*\*/g, '').slice(0, 180).trim();
 };
 
 export default function NewsFeedScreen({ navigation, route }) {
@@ -60,33 +82,65 @@ export default function NewsFeedScreen({ navigation, route }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
-  const [selectedSource, setSelectedSource] = useState(null);
   const [selectedSubject, setSelectedSubject] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedDate, setSelectedDate] = useState('');
+  const getTodayDate = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+  const [selectedDate, setSelectedDate] = useState(getTodayDate());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [sortOrder, setSortOrder] = useState('desc'); // 'desc' or 'asc'
   const [activeTab, setActiveTab] = useState('feed'); // 'feed' or 'saved'
   const [savedArticles, setSavedArticles] = useState([]);
   const [savedLoading, setSavedLoading] = useState(false);
+  const [availableDates, setAvailableDates] = useState({});
+  const [showArchive, setShowArchive] = useState(false);
+  const [archiveArticles, setArchiveArticles] = useState([]);
+  const [archiveLoading, setArchiveLoading] = useState(false);
+  const [showArchiveModal, setShowArchiveModal] = useState(false);
+  const [archiveSelectedMonth, setArchiveSelectedMonth] = useState('');
+
+  const getArchiveMonths = () => {
+    const months = [];
+    // All months of 2025 in reverse (December → January)
+    for (let m = 12; m >= 1; m--) {
+      const d = new Date(2025, m - 1, 1);
+      months.push({
+        key: `2025-${String(m).padStart(2, '0')}`,
+        label: d.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }),
+      });
+    }
+    return months;
+  };
 
   const handleDateChange = (event, dateOrString) => {
     setShowDatePicker(false);
+    if (event?.type === 'dismissed') return;
 
-    // On Web, dateOrString might be a string from TextInput onChange
-    // On Mobile, it's a Date object
-    if (dateOrString instanceof Date) {
-      const year = dateOrString.getFullYear();
-      const month = String(dateOrString.getMonth() + 1).padStart(2, '0');
-      const day = String(dateOrString.getDate()).padStart(2, '0');
+    let d = null;
+    if (dateOrString instanceof Date && !isNaN(dateOrString)) {
+      d = dateOrString;
+    } else if (typeof event?.nativeEvent?.timestamp === 'number') {
+      d = new Date(event.nativeEvent.timestamp);
+    }
+
+    if (d) {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
       setSelectedDate(`${year}-${month}-${day}`);
-    } else if (typeof dateOrString === 'string') {
+    } else if (typeof dateOrString === 'string' && dateOrString) {
       setSelectedDate(dateOrString);
     }
   };
 
   const clearDateFilter = () => {
-    setSelectedDate('');
+    setSelectedDate(getTodayDate());
+    setShowDatePicker(false);
   };
 
   const toggleSortOrder = () => {
@@ -109,25 +163,24 @@ export default function NewsFeedScreen({ navigation, route }) {
         .select('id, title, summary, subject, author, tags, gs_paper, source_url, published_date, created_at, is_published')
         .eq('is_published', true)
         .order('published_date', { ascending: false })
-        .limit(50);
+        .limit(60);
 
-      if (selectedSource) {
-        const sourceShortMap = { 'The Hindu': 'TH', 'The Economic Times': 'ET', 'Press Information Bureau': 'PIB' };
-        query = query.eq('gs_paper', sourceShortMap[selectedSource] || selectedSource);
-      }
-      if (selectedSubject && selectedSubject !== 'All') {
-        query = query.ilike('subject', `%${selectedSubject}%`);
-      }
       if (selectedDate) {
-        query = query.gte('published_date', `${selectedDate}T00:00:00`)
-                     .lte('published_date', `${selectedDate}T23:59:59`);
+        const [sy, sm, sd] = selectedDate.split('-').map(Number);
+        const next = new Date(sy, sm - 1, sd + 1);
+        const y = next.getFullYear();
+        const m = String(next.getMonth() + 1).padStart(2, '0');
+        const d = String(next.getDate()).padStart(2, '0');
+        const nextDay = `${y}-${m}-${d}`;
+        console.log(`[Articles] Query range: ${selectedDate} to ${nextDay}`);
+        query = query
+          .gte('published_date', selectedDate)
+          .lt('published_date', nextDay);
       }
 
-      const { data, error: fetchError } = await query;
+      let fetchedArticles = [];
 
-      if (fetchError) throw fetchError;
-
-      const fetchedArticles = (data || []).map(a => ({
+      const mapArticles = (data) => (data || []).map(a => ({
         ...a,
         gsPaper: a.gs_paper,
         sourceUrl: a.source_url,
@@ -137,8 +190,39 @@ export default function NewsFeedScreen({ navigation, route }) {
         tags: typeof a.tags === 'string' ? JSON.parse(a.tags) : a.tags,
       }));
 
-      console.log(`[Articles] Fetched ${fetchedArticles.length} articles from Supabase`);
-      setArticles(fetchedArticles);
+      try {
+        const { data, error: fetchError } = await query;
+        if (fetchError) throw fetchError;
+
+        fetchedArticles = mapArticles(data);
+        console.log(`[Articles] Found ${fetchedArticles.length} for date ${selectedDate}`);
+
+        // If no articles found for today, fall back to most recent ones
+        if (fetchedArticles.length === 0 && selectedDate === getTodayDate()) {
+          const { data: fallbackData } = await supabase
+            .from('articles')
+            .select('id, title, summary, subject, author, tags, gs_paper, source_url, published_date, created_at, is_published')
+            .eq('is_published', true)
+            .order('published_date', { ascending: false })
+            .limit(60);
+          fetchedArticles = mapArticles(fallbackData);
+        }
+      } catch (supaErr) {
+        console.warn('[Articles] Supabase query failed:', supaErr);
+        setError('Could not load articles. Please check your connection.');
+      }
+
+      console.log(`[Articles] ${fetchedArticles.length} articles from Supabase`);
+
+      // Apply subject filter
+      let filtered = fetchedArticles;
+      if (selectedSubject && selectedSubject !== 'All') {
+        filtered = filtered.filter(a =>
+          a.subject?.toLowerCase().includes(selectedSubject.toLowerCase())
+        );
+      }
+
+      setArticles(filtered);
     } catch (err) {
       setError('Failed to load articles. Please try again.');
       console.warn('[Articles] Fetch error:', err);
@@ -146,11 +230,30 @@ export default function NewsFeedScreen({ navigation, route }) {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [selectedSource, selectedSubject, selectedDate]);
+  }, [selectedSubject, selectedDate]);
 
   useEffect(() => {
     fetchArticles();
   }, [fetchArticles]);
+
+  // Fetch all dates that have articles (for calendar markers)
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from('articles')
+          .select('published_date')
+          .eq('is_published', true);
+        const marked = {};
+        (data || []).forEach(a => {
+          const d = (a.published_date || '').slice(0, 10);
+          if (d) marked[d] = { marked: true, dotColor: '#10B981' };
+        });
+        setAvailableDates(marked);
+        console.log(`[Dates] ${Object.keys(marked).length} dates with articles`);
+      } catch (e) { console.warn('[Dates] fetch error:', e); }
+    })();
+  }, []);
 
   // Handle navigation param to open Saved tab directly
   useEffect(() => {
@@ -186,6 +289,34 @@ export default function NewsFeedScreen({ navigation, route }) {
     fetchArticles(true);
   };
 
+  const fetchArchiveMonth = async (monthKey, monthLabel) => {
+    setArchiveLoading(true);
+    setArchiveArticles([]);
+    setArchiveSelectedMonth(monthLabel);
+    setShowArchiveModal(true);
+    try {
+      const [year, month] = monthKey.split('-').map(Number);
+      const nextMonth = month === 12 ? `${year + 1}-01` : `${year}-${String(month + 1).padStart(2, '0')}`;
+      console.log(`[Archive] Fetching ${monthKey}-01 to ${nextMonth}-01`);
+      const { data, error: fetchError } = await supabase
+        .from('articles')
+        .select('id, title, summary, subject, author, gs_paper, source_url, published_date')
+        .eq('is_published', true)
+        .gte('published_date', `${monthKey}-01`)
+        .lt('published_date', `${nextMonth}-01`)
+        .order('published_date', { ascending: false })
+        .limit(30);
+      if (fetchError) throw fetchError;
+      console.log(`[Archive] Found ${(data || []).length} articles for ${monthLabel}`);
+      setArchiveArticles(data || []);
+    } catch (err) {
+      console.warn('[Archive] Fetch error:', err);
+      setArchiveArticles([]);
+    } finally {
+      setArchiveLoading(false);
+    }
+  };
+
   // Filter by search query
   const filteredArticles = articles.filter(article => {
     if (!searchQuery) return true;
@@ -201,154 +332,181 @@ export default function NewsFeedScreen({ navigation, route }) {
     if (!dateString) return '';
     const date = new Date(dateString);
     return date.toLocaleDateString('en-IN', {
-      day: 'numeric',
-      month: 'short',
+      day: '2-digit',
+      month: 'long',
       year: 'numeric',
     });
   };
 
-  const getSourceShort = (source) => {
-    if (source === 'The Hindu') return 'TH';
-    if (source === 'The Economic Times') return 'ET';
-    if (source === 'Press Information Bureau') return 'PIB';
-    return source;
-  };
-
-  const SOURCE_BADGE_COLORS = {
-    TH: ['#3B9AFF', '#2A7DEB'],
-    ET: ['#3B82F6', '#1D4ED8'],
-    PIB: ['#10B981', '#047857'],
-  };
-
-  const cardBg     = isDark ? 'rgba(255,255,255,0.072)' : '#FFFFFF';
-  const cardBorder = isDark ? 'rgba(255,255,255,0.10)'  : theme.colors.border;
-
-  const renderArticleCard = ({ item }) => (
-    <TouchableOpacity
-      style={[styles.articleCard, { backgroundColor: cardBg, borderColor: cardBorder }]}
-      activeOpacity={0.78}
-      onPress={() => navigation.navigate('ArticleDetail', { articleId: item.id })}
-    >
-      <View style={styles.articleContent}>
-        <View style={styles.articleHeader}>
-          {item.gsPaper && (
-            <LinearGradient
-              colors={SOURCE_BADGE_COLORS[getSourceShort(item.gsPaper)] || ['#3B9AFF', '#2A7DEB']}
-              start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-              style={styles.paperBadge}
-            >
-              <Text style={styles.paperBadgeText}>{getSourceShort(item.gsPaper)}</Text>
-            </LinearGradient>
-          )}
-          {item.subject && (
-            <View style={[styles.subjectBadge, { backgroundColor: isDark ? 'rgba(255,255,255,0.10)' : theme.colors.primaryLight, borderColor: isDark ? 'rgba(255,255,255,0.18)' : theme.colors.borderStrong }]}>
-              <Text style={[styles.subjectBadgeText, { color: isDark ? 'rgba(255,255,255,0.75)' : theme.colors.primary }]}>{item.subject}</Text>
-            </View>
-          )}
-        </View>
-
-        <Text style={[styles.articleTitle, { color: theme.colors.text }]} numberOfLines={2}>{item.title}</Text>
-
-        {item.summary && (
-          <Text style={[styles.articleSummary, { color: theme.colors.textSecondary }]} numberOfLines={3}>{item.summary}</Text>
-        )}
-
-        <View style={styles.articleFooter}>
-          {item.author && (
-            <View style={styles.authorInfo}>
-              <Ionicons name="person-outline" size={13} color={theme.colors.textTertiary} />
-              <Text style={[styles.authorText, { color: theme.colors.textTertiary }]}>{item.author}</Text>
-            </View>
-          )}
-          <Text style={[styles.dateText, { color: theme.colors.textTertiary }]}>{formatDate(item.publishedDate || item.createdAt)}</Text>
-        </View>
-
-        {item.tags && item.tags.length > 0 && (
-          <View style={styles.tagsContainer}>
-            {(typeof item.tags === 'string' ? JSON.parse(item.tags) : item.tags).slice(0, 3).map((tag, index) => (
-              <View key={index} style={[styles.tag, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : theme.colors.backgroundAlt, borderColor: cardBorder }]}>
-                <Text style={[styles.tagText, { color: theme.colors.textSecondary }]}>{tag}</Text>
-              </View>
-            ))}
-          </View>
-        )}
-      </View>
-    </TouchableOpacity>
-  );
-
-  const renderSourceCard = (source) => {
-    const isSelected = selectedSource === source;
-    const logo = SOURCE_LOGOS[source];
+  const renderArticleCard = ({ item }) => {
+    const sectionColor = SECTION_COLORS[item.subject] || '#2A7DEB';
+    const sourceName = SOURCE_NAMES[item.gsPaper] || item.gsPaper || 'News';
+    const excerpt = getFirstParagraph(item.summary);
+    let tags = item.tags ? (typeof item.tags === 'string' ? JSON.parse(item.tags) : item.tags) : [];
+    // Auto-generate category tags from subject if none exist
+    if (!tags || tags.length === 0) {
+      const catTags = {
+        'Polity': ['GS Paper 2', 'Polity & Governance'],
+        'Economy': ['GS Paper 3', 'Indian Economy'],
+        'Science & Technology': ['GS Paper 3', 'Science & Tech'],
+        'Environment': ['GS Paper 3', 'Environment & Ecology'],
+        'Current Affairs': ['GS Paper 2', 'Current Affairs'],
+        'Geography': ['GS Paper 1', 'Indian Geography'],
+        'History': ['GS Paper 1', 'Indian History'],
+      };
+      tags = catTags[item.subject] || [item.subject || 'Current Affairs'];
+    }
 
     return (
       <TouchableOpacity
-        key={source}
-        style={[styles.sourceCard, {
-          backgroundColor: isDark ? 'rgba(255,255,255,0.07)' : '#FFFFFF',
-          borderColor: isDark ? 'rgba(255,255,255,0.12)' : '#D9CFC2',
-        }, isSelected && styles.sourceCardSelected]}
-        activeOpacity={0.78}
-        onPress={() => setSelectedSource(isSelected ? null : source)}
+        style={[styles.articleCard, {
+          backgroundColor: isDark ? '#12162A' : '#FFFFFF',
+          borderColor: isDark ? 'rgba(255,255,255,0.07)' : '#E8E2D9',
+        }]}
+        activeOpacity={0.75}
+        onPress={() => navigation.navigate('ArticleDetail', {
+          articleId: item.id,
+        })}
       >
-        {isSelected && (
-          <LinearGradient
-            colors={['rgba(42,125,235,0.22)', 'rgba(42,125,235,0.12)']}
-            style={StyleSheet.absoluteFillObject}
-          />
-        )}
-        {logo && <Image source={logo} style={styles.sourceLogo} resizeMode="contain" />}
+        {/* Colored left accent bar — section color like The Hindu */}
+        <View style={[styles.cardAccent, { backgroundColor: sectionColor }]} />
+
+        <View style={styles.cardInner}>
+          {/* Section label + source */}
+          <View style={styles.cardMetaTop}>
+            <Text style={[styles.cardSection, { color: sectionColor }]}>
+              {item.subject?.toUpperCase() || 'NEWS'}
+            </Text>
+            <Text style={[styles.cardSourceLabel, { color: isDark ? 'rgba(255,255,255,0.38)' : '#9E9E9E' }]}>
+              {sourceName}
+            </Text>
+          </View>
+
+          {/* Headline */}
+          <Text style={[styles.cardHeadline, { color: isDark ? '#F0F0FF' : '#1A1A2E' }]} numberOfLines={3}>
+            {item.title}
+          </Text>
+
+          {/* Lead paragraph excerpt */}
+          {excerpt ? (
+            <Text style={[styles.cardExcerpt, { color: isDark ? 'rgba(255,255,255,0.55)' : '#555E6B' }]} numberOfLines={2}>
+              {excerpt}
+            </Text>
+          ) : null}
+
+          {/* Byline + date */}
+          <View style={styles.cardFooter}>
+            {item.author ? (
+              <Text style={[styles.cardAuthorText, { color: isDark ? 'rgba(255,255,255,0.40)' : '#7A8A91' }]}>
+                {item.author}
+              </Text>
+            ) : <View />}
+            <Text style={[styles.cardDateText, { color: isDark ? 'rgba(255,255,255,0.35)' : '#9E9E9E' }]}>
+              {formatDate(item.publishedDate || item.createdAt)}
+            </Text>
+          </View>
+
+          {/* Source badge */}
+          {(item.gsPaper === 'TH' || item.gsPaper === 'HT') && (
+            <View style={[styles.cardTagsRow, { marginTop: 6 }]}>
+              <View style={[styles.cardTag, {
+                backgroundColor: item.gsPaper === 'TH' ? 'rgba(42,125,235,0.12)' : 'rgba(239,68,68,0.12)',
+                borderColor: item.gsPaper === 'TH' ? 'rgba(42,125,235,0.25)' : 'rgba(239,68,68,0.25)',
+              }]}>
+                <Text style={[styles.cardTagText, { color: item.gsPaper === 'TH' ? '#2A7DEB' : '#EF4444', fontWeight: '700' }]}>
+                  {item.gsPaper === 'TH' ? 'The Hindu' : 'Hindustan Times'}
+                </Text>
+              </View>
+            </View>
+          )}
+
+          {/* Tags */}
+          {tags.length > 0 && (
+            <View style={styles.cardTagsRow}>
+              {tags.slice(0, 3).map((tag, index) => (
+                <View key={index} style={[styles.cardTag, {
+                  backgroundColor: isDark ? 'rgba(255,255,255,0.07)' : '#F0EDE8',
+                  borderColor: isDark ? 'rgba(255,255,255,0.10)' : '#E0D8CC',
+                }]}>
+                  <Text style={[styles.cardTagText, { color: isDark ? 'rgba(255,255,255,0.55)' : '#6B7B8A' }]}>
+                    {tag}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
       </TouchableOpacity>
     );
   };
 
-  const renderEmptyState = () => (
-    <View style={styles.emptyContainer}>
-      <View style={[styles.emptyIconWrap, { backgroundColor: isDark ? 'rgba(255,255,255,0.07)' : theme.colors.backgroundAlt }]}>
-        <Ionicons name="newspaper-outline" size={42} color={theme.colors.textTertiary} />
+  const renderEmptyState = () => {
+    const now = new Date();
+    const isToday = selectedDate === getTodayDate();
+    const isBefore8am = now.getHours() < 8;
+    const emptyMsg = error
+      ? error
+      : isToday && isBefore8am
+        ? "Today's news will be ready at 8:00 AM. Check back then!"
+        : "No articles were published on this date. Try picking a different date from the calendar.";
+
+    return (
+      <View style={styles.emptyContainer}>
+        <View style={[styles.emptyIconWrap, { backgroundColor: isDark ? 'rgba(255,255,255,0.07)' : theme.colors.backgroundAlt }]}>
+          <Ionicons name={isToday && isBefore8am ? 'time-outline' : 'newspaper-outline'} size={42} color={theme.colors.textTertiary} />
+        </View>
+        <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>
+          {isToday && isBefore8am ? 'News Updates at 8 AM' : 'No Articles Found'}
+        </Text>
+        <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>{emptyMsg}</Text>
+        {!(isToday && isBefore8am) && (
+          <TouchableOpacity style={styles.retryButton} activeOpacity={0.82} onPress={handleRefresh}>
+            <LinearGradient
+              colors={['#3B9AFF', '#2A7DEB']}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+              style={styles.retryButtonInner}
+            >
+              <Ionicons name="refresh" size={16} color="#FFF" />
+              <Text style={styles.retryButtonText}>Retry</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
       </View>
-      <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>No Articles Found</Text>
-      <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>{error || 'Try adjusting your filters or check back later.'}</Text>
-      <TouchableOpacity style={styles.retryButton} activeOpacity={0.82} onPress={handleRefresh}>
-        <LinearGradient
-          colors={['#3B9AFF', '#2A7DEB']}
-          start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-          style={styles.retryButtonInner}
-        >
-          <Ionicons name="refresh" size={16} color="#FFF" />
-          <Text style={styles.retryButtonText}>Retry</Text>
-        </LinearGradient>
-      </TouchableOpacity>
-    </View>
-  );
+    );
+  };
 
   const renderSavedArticleCard = (item) => (
-    <View key={item.id} style={[styles.articleCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-      <View style={styles.articleContent}>
-        <View style={styles.articleHeader}>
-          <LinearGradient
-            colors={['#10B981', '#047857']}
-            start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-            style={styles.paperBadge}
-          >
-            <Text style={styles.paperBadgeText}>SAVED</Text>
-          </LinearGradient>
+    <View key={item.id} style={[styles.articleCard, {
+      backgroundColor: isDark ? '#12162A' : '#FFFFFF',
+      borderColor: isDark ? 'rgba(255,255,255,0.07)' : '#E8E2D9',
+    }]}>
+      <View style={[styles.cardAccent, { backgroundColor: '#10B981' }]} />
+      <View style={styles.cardInner}>
+        <View style={styles.cardMetaTop}>
+          <Text style={[styles.cardSection, { color: '#10B981' }]}>SAVED</Text>
           {item.domain ? (
-            <View style={[styles.subjectBadge, { backgroundColor: isDark ? 'rgba(255,255,255,0.10)' : theme.colors.primaryLight, borderColor: isDark ? 'rgba(255,255,255,0.18)' : theme.colors.borderStrong }]}>
-              <Text style={[styles.subjectBadgeText, { color: isDark ? 'rgba(255,255,255,0.75)' : theme.colors.primary }]}>{item.domain}</Text>
-            </View>
+            <Text style={[styles.cardSourceLabel, { color: isDark ? 'rgba(255,255,255,0.38)' : '#9E9E9E' }]}>
+              {item.domain}
+            </Text>
           ) : null}
         </View>
 
-        <Text style={[styles.articleTitle, { color: theme.colors.text }]} numberOfLines={2}>{item.title}</Text>
+        <Text style={[styles.cardHeadline, { color: isDark ? '#F0F0FF' : '#1A1A2E' }]} numberOfLines={3}>
+          {item.title}
+        </Text>
 
         {item.summary ? (
-          <Text style={[styles.articleSummary, { color: theme.colors.textSecondary }]} numberOfLines={4}>{item.summary}</Text>
+          <Text style={[styles.cardExcerpt, { color: isDark ? 'rgba(255,255,255,0.55)' : '#555E6B' }]} numberOfLines={3}>
+            {item.summary}
+          </Text>
         ) : null}
 
-        <View style={styles.articleFooter}>
-          <Text style={[styles.dateText, { color: theme.colors.textTertiary }]}>{formatDate(item.savedAt)}</Text>
+        <View style={styles.cardFooter}>
+          <Text style={[styles.cardDateText, { color: isDark ? 'rgba(255,255,255,0.35)' : '#9E9E9E' }]}>
+            {formatDate(item.savedAt)}
+          </Text>
           <View style={{ flexDirection: 'row', gap: 12 }}>
-            <TouchableOpacity onPress={() => Linking.openURL(item.url)}>
+            <TouchableOpacity onPress={() => Platform.OS === 'web' ? window.open(item.url, '_blank') : WebBrowser.openBrowserAsync(item.url)}>
               <Ionicons name="open-outline" size={18} color="#2A7DEB" />
             </TouchableOpacity>
             <TouchableOpacity onPress={() => handleDeleteSaved(item.id)}>
@@ -445,6 +603,23 @@ export default function NewsFeedScreen({ navigation, route }) {
         >
           {activeTab === 'feed' ? (
           <>
+          {/* Disclaimer */}
+          <View style={{
+            backgroundColor: isDark ? 'rgba(42,125,235,0.08)' : 'rgba(42,125,235,0.06)',
+            borderWidth: 1,
+            borderColor: isDark ? 'rgba(42,125,235,0.20)' : 'rgba(42,125,235,0.15)',
+            borderRadius: 12, padding: 12, marginBottom: 12,
+          }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+              <Ionicons name="information-circle-outline" size={16} color="#2A7DEB" />
+              <Text style={{ fontSize: 13, fontWeight: '700', color: '#2A7DEB' }}>How it works</Text>
+            </View>
+            <Text style={{ fontSize: 12, lineHeight: 18, color: isDark ? 'rgba(255,255,255,0.55)' : '#555E6B' }}>
+              {'📅 '}Date selection covers the last 3 months. Only dates with articles (highlighted in green) are clickable — other dates are disabled.{'\n'}
+              {'📚 '}For older news, use "Browse Archive" below to view major UPSC highlights month-wise. Select any month to see key events and analysis from that period.
+            </Text>
+          </View>
+
           {/* Search */}
           <View style={[styles.searchContainer, {
             backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#F5F1EB',
@@ -463,11 +638,6 @@ export default function NewsFeedScreen({ navigation, route }) {
                 <Ionicons name="close-circle" size={20} color={isDark ? 'rgba(255,255,255,0.45)' : '#7A8A91'} />
               </TouchableOpacity>
             ) : null}
-          </View>
-
-          {/* Source Filters */}
-          <View style={[styles.sourceFilters]}>
-            {FILTERS.sources.map(source => renderSourceCard(source))}
           </View>
 
           {/* Date Picker Row */}
@@ -491,6 +661,8 @@ export default function NewsFeedScreen({ navigation, route }) {
                   id="web-date-picker"
                   type="date"
                   value={selectedDate}
+                  max={getTodayDate()}
+                  min={(() => { const d = new Date(); d.setMonth(d.getMonth() - 6); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })()}
                   onChange={(e) => handleDateChange(e, e.target.value)}
                   style={{ position: 'absolute', width: 0, height: 0, opacity: 0 }}
                 />
@@ -517,13 +689,115 @@ export default function NewsFeedScreen({ navigation, route }) {
           </View>
 
           {Platform.OS !== 'web' && showDatePicker && (
-            <DateTimePicker
-              value={selectedDate ? new Date(selectedDate) : new Date()}
-              mode="date"
-              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-              onChange={handleDateChange}
-              maximumDate={new Date()}
-            />
+            <View style={[styles.archiveCalendarWrap, {
+              backgroundColor: isDark ? '#12162A' : '#FFFFFF',
+              borderColor: isDark ? 'rgba(255,255,255,0.07)' : '#E8E2D9',
+            }]}>
+              <Calendar
+                current={selectedDate}
+                maxDate={getTodayDate()}
+                enableSwipeMonths={true}
+                renderArrow={(direction) => (
+                  <View style={{
+                    width: 36, height: 36, borderRadius: 18,
+                    backgroundColor: isDark ? 'rgba(42,125,235,0.15)' : 'rgba(42,125,235,0.10)',
+                    justifyContent: 'center', alignItems: 'center',
+                  }}>
+                    <Ionicons
+                      name={direction === 'left' ? 'chevron-back' : 'chevron-forward'}
+                      size={20}
+                      color="#2A7DEB"
+                    />
+                  </View>
+                )}
+                dayComponent={({ date }) => {
+                  const ds = date?.dateString;
+                  const hasArticles = ds && availableDates[ds];
+                  const isSelected = ds === selectedDate;
+                  const bg = isSelected ? '#2A7DEB' : hasArticles ? '#10B981' : 'transparent';
+                  const textColor = isSelected ? '#FFF' : hasArticles ? '#FFF' : (isDark ? 'rgba(255,255,255,0.12)' : '#E0E0E0');
+                  return (
+                    <TouchableOpacity
+                      disabled={!hasArticles}
+                      activeOpacity={0.7}
+                      onPress={() => { if (hasArticles) { setSelectedDate(ds); setShowDatePicker(false); } }}
+                      style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: bg, justifyContent: 'center', alignItems: 'center' }}
+                    >
+                      <Text style={{ fontSize: 14, fontWeight: hasArticles ? '700' : '400', color: textColor }}>{date?.day}</Text>
+                    </TouchableOpacity>
+                  );
+                }}
+                theme={{
+                  backgroundColor: 'transparent',
+                  calendarBackground: 'transparent',
+                  textSectionTitleColor: isDark ? '#A0A0B0' : '#555E6B',
+                  monthTextColor: isDark ? '#F0F0FF' : '#1A1A2E',
+                  arrowColor: '#2A7DEB',
+                  'stylesheet.calendar.header': {
+                    monthText: { fontSize: 18, fontWeight: '700', color: isDark ? '#F0F0FF' : '#1A1A2E' },
+                  },
+                }}
+              />
+              {/* Cancel button */}
+              <TouchableOpacity
+                style={{
+                  flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+                  gap: 6, paddingVertical: 12, borderTopWidth: 1,
+                  borderTopColor: isDark ? 'rgba(255,255,255,0.07)' : '#E8E2D9',
+                }}
+                onPress={() => setShowDatePicker(false)}
+              >
+                <Ionicons name="close-circle-outline" size={18} color="#EF4444" />
+                <Text style={{ fontSize: 14, fontWeight: '700', color: '#EF4444' }}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Archive toggle */}
+          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>
+            <TouchableOpacity
+              style={[styles.dateButton, {
+                backgroundColor: showArchive ? '#2A7DEB' : (isDark ? 'rgba(255,255,255,0.07)' : '#F5F1EB'),
+                borderColor: showArchive ? '#3B9AFF' : (isDark ? 'rgba(255,255,255,0.12)' : '#D9CFC2'),
+              }]}
+              onPress={() => setShowArchive(prev => !prev)}
+            >
+              <Ionicons name="archive-outline" size={16} color={showArchive ? '#FFF' : (isDark ? 'rgba(255,255,255,0.65)' : '#3D565E')} />
+              <Text style={[styles.dateButtonText, { marginLeft: 8, color: showArchive ? '#FFF' : (isDark ? '#F0F0FF' : '#3D565E') }]}>
+                {showArchive ? 'Archive' : 'Browse Archive (3+ months)'}
+              </Text>
+            </TouchableOpacity>
+            {showArchive && (
+              <TouchableOpacity
+                style={[styles.dateButton, {
+                  backgroundColor: isDark ? 'rgba(239,68,68,0.15)' : 'rgba(239,68,68,0.08)',
+                  borderColor: 'rgba(239,68,68,0.30)',
+                }]}
+                onPress={() => setShowArchive(false)}
+              >
+                <Ionicons name="arrow-back" size={16} color="#EF4444" />
+                <Text style={[styles.dateButtonText, { marginLeft: 6, color: '#EF4444' }]}>Back to Current Affairs</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {showArchive && (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
+              {getArchiveMonths().map((m) => (
+                <TouchableOpacity
+                  key={m.key}
+                  style={[styles.subjectChip, {
+                    backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#F5F1EB',
+                    borderColor: isDark ? 'rgba(255,255,255,0.12)' : '#D9CFC2',
+                  }]}
+                  onPress={() => fetchArchiveMonth(m.key, m.label)}
+                >
+                  <Text style={[styles.subjectChipText, { color: isDark ? 'rgba(255,255,255,0.65)' : '#3D565E' }]}>
+                    {m.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           )}
 
           {/* Subject Filters */}
@@ -555,7 +829,9 @@ export default function NewsFeedScreen({ navigation, route }) {
               <LinearGradient colors={['#3B9AFF', '#2A7DEB']} style={styles.loadingBubble}>
                 <ActivityIndicator size="large" color="#FFF" />
               </LinearGradient>
-              <Text style={[styles.loadingText, { color: isDark ? 'rgba(255,255,255,0.50)' : '#7A8A91' }]}>Loading articles…</Text>
+              <Text style={[styles.loadingText, { color: isDark ? 'rgba(255,255,255,0.50)' : '#7A8A91' }]}>
+                Loading articles…
+              </Text>
             </View>
           ) : filteredArticles.length === 0 ? (
             renderEmptyState()
@@ -589,6 +865,92 @@ export default function NewsFeedScreen({ navigation, route }) {
 
           <View style={{ height: 40 }} />
         </ScrollView>
+        {/* Archive Modal */}
+        <Modal
+          visible={showArchiveModal}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowArchiveModal(false)}
+        >
+          <View style={styles.archiveModalOverlay}>
+            <View style={[styles.archiveModalContent, { backgroundColor: isDark ? '#12162A' : '#FFFFFF' }]}>
+              <View style={[styles.cardFooter, { marginBottom: 16 }]}>
+                <View>
+                  <Text style={[styles.heroTitle, { color: isDark ? '#F0F0FF' : '#1A1A2E', fontSize: 18 }]}>
+                    {archiveSelectedMonth || 'Archive'}
+                  </Text>
+                  <Text style={[styles.heroSub, { color: isDark ? 'rgba(255,255,255,0.50)' : '#7A8A91' }]}>
+                    Major UPSC Highlights
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={[styles.dateButton, {
+                    backgroundColor: isDark ? 'rgba(255,255,255,0.07)' : '#F3F4F6',
+                    borderColor: isDark ? 'rgba(255,255,255,0.12)' : '#E5E7EB',
+                  }]}
+                  onPress={() => setShowArchiveModal(false)}
+                >
+                  <Ionicons name="close" size={16} color={isDark ? '#9CA3AF' : '#6B7280'} />
+                  <Text style={[styles.dateButtonText, { marginLeft: 4, color: isDark ? '#9CA3AF' : '#6B7280' }]}>Close</Text>
+                </TouchableOpacity>
+              </View>
+
+              {archiveLoading ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color="#2A7DEB" />
+                  <Text style={[styles.loadingText, { color: isDark ? 'rgba(255,255,255,0.50)' : '#7A8A91' }]}>Loading archive…</Text>
+                </View>
+              ) : archiveArticles.length === 0 ? (
+                <View style={styles.emptyContainer}>
+                  <Ionicons name="newspaper-outline" size={42} color={isDark ? 'rgba(255,255,255,0.25)' : '#9E9E9E'} />
+                  <Text style={[styles.emptyTitle, { color: isDark ? '#F0F0FF' : '#1A1A2E' }]}>No highlights found for this month</Text>
+                </View>
+              ) : (
+                <ScrollView showsVerticalScrollIndicator={false}>
+                  {archiveArticles.map((item) => (
+                    <TouchableOpacity
+                      key={item.id}
+                      style={[styles.articleCard, {
+                        backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F9F7F4',
+                        borderColor: isDark ? 'rgba(255,255,255,0.07)' : '#E8E2D9',
+                        marginBottom: 10,
+                      }]}
+                      activeOpacity={0.75}
+                      onPress={() => {
+                        setShowArchiveModal(false);
+                        navigation.navigate('ArticleDetail', { articleId: item.id });
+                      }}
+                    >
+                      <View style={[styles.cardAccent, { backgroundColor: SECTION_COLORS[item.subject] || '#2A7DEB' }]} />
+                      <View style={styles.cardInner}>
+                        <View style={styles.cardMetaTop}>
+                          <Text style={[styles.cardSection, { color: SECTION_COLORS[item.subject] || '#2A7DEB' }]}>
+                            {item.subject?.toUpperCase() || 'NEWS'}
+                          </Text>
+                          <Text style={[styles.cardTagText, { color: '#2A7DEB', fontWeight: '700' }]}>
+                            {SOURCE_NAMES[item.gs_paper] || item.gs_paper || 'News'}
+                          </Text>
+                        </View>
+                        <Text style={[styles.cardHeadline, { color: isDark ? '#F0F0FF' : '#1A1A2E' }]} numberOfLines={3}>
+                          {item.title}
+                        </Text>
+                        {item.summary ? (
+                          <Text style={[styles.cardExcerpt, { color: isDark ? 'rgba(255,255,255,0.55)' : '#555E6B' }]} numberOfLines={2}>
+                            {getFirstParagraph(item.summary)}
+                          </Text>
+                        ) : null}
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
+                          <Ionicons name="reader-outline" size={14} color="#2A7DEB" />
+                          <Text style={{ fontSize: 13, fontWeight: '700', color: '#2A7DEB' }}>Read Full Analysis</Text>
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              )}
+            </View>
+          </View>
+        </Modal>
       </SafeAreaView>
     </View>
   );
@@ -631,12 +993,6 @@ const styles = StyleSheet.create({
   searchContainer: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, paddingHorizontal: 14, paddingVertical: 12, borderRadius: 16, marginTop: 18, marginBottom: 14, gap: 10 },
   searchInput: { flex: 1, fontSize: 15, padding: 0 },
 
-  // Source cards
-  sourceFilters: { flexDirection: 'row', gap: 12, marginBottom: 14 },
-  sourceCard: { flex: 1, height: 64, borderRadius: 16, justifyContent: 'center', alignItems: 'center', padding: 8, borderWidth: 1, overflow: 'hidden' },
-  sourceCardSelected: { borderColor: '#3B9AFF', borderWidth: 2 },
-  sourceLogo: { width: '80%', height: 38 },
-
   // Date filter
   dateFilterRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 },
   dateButton: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12 },
@@ -656,24 +1012,22 @@ const styles = StyleSheet.create({
   loadingBubble: { width: 64, height: 64, borderRadius: 32, justifyContent: 'center', alignItems: 'center' },
   loadingText: { fontSize: 14 },
 
-  // Articles
-  articlesList: { gap: 12 },
-  articleCard: { borderRadius: 20, padding: 18, marginBottom: 4, borderWidth: 1, borderColor: 'rgba(255,255,255,0.10)', overflow: 'hidden' },
-  articleContent: { flex: 1 },
-  articleHeader: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 },
-  paperBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
-  paperBadgeText: { fontSize: 11, fontWeight: '800', color: '#FFF', letterSpacing: 0.3 },
-  subjectBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' },
-  subjectBadgeText: { fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.80)' },
-  articleTitle: { fontSize: 16, fontWeight: '700', color: '#FFF', lineHeight: 23, marginBottom: 8, letterSpacing: -0.3 },
-  articleSummary: { fontSize: 13, color: 'rgba(255,255,255,0.55)', lineHeight: 20, marginBottom: 12 },
-  articleFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  authorInfo: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  authorText: { fontSize: 12, color: 'rgba(255,255,255,0.40)' },
-  dateText: { fontSize: 12, color: 'rgba(255,255,255,0.38)' },
-  tagsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 },
-  tag: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 7, backgroundColor: 'rgba(255,255,255,0.10)' },
-  tagText: { fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.55)' },
+  // Articles — The Hindu editorial card style
+  articlesList: { gap: 10 },
+  articleCard: { borderRadius: 12, marginBottom: 4, borderWidth: 1, overflow: 'hidden', flexDirection: 'row' },
+  cardAccent: { width: 4 },
+  cardInner: { flex: 1, padding: 16 },
+  cardMetaTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  cardSection: { fontSize: 10, fontWeight: '800', letterSpacing: 1.5 },
+  cardSourceLabel: { fontSize: 11 },
+  cardHeadline: { fontSize: 17, fontWeight: '800', lineHeight: 24, marginBottom: 8, letterSpacing: -0.2 },
+  cardExcerpt: { fontSize: 14, lineHeight: 20, marginBottom: 10 },
+  cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  cardAuthorText: { fontSize: 12, fontStyle: 'italic' },
+  cardDateText: { fontSize: 12 },
+  cardTagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 },
+  cardTag: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, borderWidth: 1 },
+  cardTagText: { fontSize: 10, fontWeight: '600' },
 
   // Empty state
   emptyContainer: { alignItems: 'center', justifyContent: 'center', paddingVertical: 60, gap: 12 },
@@ -683,4 +1037,9 @@ const styles = StyleSheet.create({
   retryButton: { borderRadius: 14, overflow: 'hidden', marginTop: 6 },
   retryButtonInner: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 24, paddingVertical: 13 },
   retryButtonText: { color: '#FFF', fontSize: 14, fontWeight: '700' },
+
+  // Archive
+  archiveCalendarWrap: { borderRadius: 12, borderWidth: 1, overflow: 'hidden', marginBottom: 14, padding: 4 },
+  archiveModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  archiveModalContent: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, maxHeight: '80%' },
 });

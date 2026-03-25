@@ -47,7 +47,7 @@ const CHECKOUT_URLS = {
     CREDITS_1200: 'https://checkout.dodopayments.com/buy/pdt_0NWfO0TYn9murkxJ3FWbC',
     CREDITS_1999: 'https://checkout.dodopayments.com/buy/pdt_0NWfO2IA7c8uoxbXKPkFP',
     TEST_5_RUPEES: 'https://checkout.dodopayments.com/buy/pdt_0NXVmuekVgYecsGGsW7li',
-    STORAGE_PLAN: 'https://checkout.dodopayments.com/buy/pdt_0NaAamwV8NdMAXe0v2yBx', // ₹199/month Cloud Storage
+    STORAGE_PLAN: 'https://checkout.dodopayments.com/buy/pdt_0NaAamwV8NdMAXe0v2yBx', // ₹299/month Cloud Storage
 };
 
 export default function BillingScreen() {
@@ -476,38 +476,9 @@ export default function BillingScreen() {
                     <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backButton, { backgroundColor: isDark ? '#1A1A2E' : '#FFFFFF' }]}>
                         <Ionicons name="arrow-back" size={20} color={isDark ? '#FFF' : '#1A1A1A'} />
                     </TouchableOpacity>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        <Text style={[styles.headerTitle, { color: isDark ? '#FFF' : '#1A1A1A' }]}>Billing & Credits</Text>
-                        <View style={{ backgroundColor: '#EF4444', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
-                            <Text style={{ color: '#FFF', fontSize: 10, fontWeight: '800' }}>DEBUG</Text>
-                        </View>
-                    </View>
+                    <Text style={[styles.headerTitle, { color: isDark ? '#FFF' : '#1A1A1A' }]}>Billing & Credits</Text>
                     <View style={{ width: 40 }} />
                 </View>
-
-                {/* EMERGENCY TEST PACK AT TOP */}
-                <TouchableOpacity
-                    style={{
-                        backgroundColor: '#EF4444',
-                        marginHorizontal: 20,
-                        padding: 12,
-                        borderRadius: 12,
-                        flexDirection: 'row',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        marginBottom: 16
-                    }}
-                    onPress={() => selectPack('Quick Test Pack (10 credits)', 10, '₹5', CHECKOUT_URLS.TEST_5_RUPEES)}
-                >
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                        <Ionicons name="flash" size={20} color="#FFF" />
-                        <View>
-                            <Text style={{ color: '#FFF', fontWeight: '800' }}>₹5 TEST PACK (10 CREDITS)</Text>
-                            <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 11 }}>Tap here to test payment flow</Text>
-                        </View>
-                    </View>
-                    <Ionicons name="arrow-forward" size={20} color="#FFF" />
-                </TouchableOpacity>
 
                 {/* Credits Card */}
                 {renderCreditsCard()}
@@ -527,7 +498,7 @@ export default function BillingScreen() {
                             </Text>
                         </View>
                         <View style={{ alignItems: 'flex-end' }}>
-                            <Text style={{ fontSize: 22, fontWeight: '800', color: '#2A7DEB' }}>₹199</Text>
+                            <Text style={{ fontSize: 22, fontWeight: '800', color: '#2A7DEB' }}>₹299</Text>
                             <Text style={{ fontSize: 11, color: isDark ? '#94A3B8' : '#64748B' }}>/month</Text>
                         </View>
                     </View>
@@ -546,7 +517,7 @@ export default function BillingScreen() {
                         onPress={() => openCheckout(CHECKOUT_URLS.STORAGE_PLAN, 'Cloud Storage Plan')}
                     >
                         <Ionicons name="card" size={18} color="#FFF" />
-                        <Text style={{ color: '#FFF', fontSize: 15, fontWeight: '700' }}>Get Subscription - ₹199/month</Text>
+                        <Text style={{ color: '#FFF', fontSize: 15, fontWeight: '700' }}>Get Subscription - ₹299/month</Text>
                     </TouchableOpacity>
                 </View>
 

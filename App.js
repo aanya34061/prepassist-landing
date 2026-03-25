@@ -23,13 +23,10 @@ import QuestionsListScreen from './src/screens/QuestionsListScreen';
 import TestScreen from './src/screens/TestScreen';
 import ResultScreen from './src/screens/ResultScreen';
 import MainsAnswerEvaluationScreen from './src/screens/MainsAnswerEvaluationScreen';
-import QuestionBankScreen from './src/screens/QuestionBankScreen';
 import ProgressScreen from './src/screens/ProgressScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import NewsFeedScreen from './src/screens/NewsFeedScreen';
 import ArticleDetailScreen from './src/screens/ArticleDetailScreen';
-import QuestionPaperScreen from './src/screens/QuestionPaperScreen';
-import QuestionSetListScreen from './src/screens/QuestionSetListScreen';
 
 // Roadmap Screens
 import RoadmapScreen from './src/screens/RoadmapScreen';
@@ -82,6 +79,7 @@ import ApiTestScreen from './src/screens/ApiTestScreen';
 
 // New Home Screen (Firebase replica)
 import NewHomeScreen from './src/screens/NewHomeScreen';
+import QuestionBankScreen from './src/screens/QuestionBankScreen';
 
 // Saved Articles Screen
 import SavedArticlesScreen from './src/screens/SavedArticlesScreen';
@@ -129,7 +127,6 @@ const MainNavigator = () => (
     <Stack.Screen name="Test" component={TestScreen} />
     <Stack.Screen name="Result" component={ResultScreen} />
     <Stack.Screen name="Essay" component={MainsAnswerEvaluationScreen} />
-    <Stack.Screen name="QuestionBank" component={QuestionBankScreen} />
     <Stack.Screen name="Progress" component={ProgressScreen} />
     <Stack.Screen name="Settings" component={SettingsScreen} />
     <Stack.Screen name="Roadmap" component={RoadmapScreen} />
@@ -168,8 +165,8 @@ const MainNavigator = () => (
     {/* AI MCQ Generator (without PDF upload) */}
     <Stack.Screen name="AIMCQGenerator" component={AIMCQsGenerateScreen} />
     <Stack.Screen name="AIMCQList" component={AIMCQListScreen} />
-    <Stack.Screen name="QuestionPaper" component={QuestionPaperScreen} />
-    <Stack.Screen name="QuestionSetList" component={QuestionSetListScreen} />
+    {/* Question Bank */}
+    <Stack.Screen name="QuestionBank" component={QuestionBankScreen} />
     {/* Coming Soon */}
     <Stack.Screen name="ComingSoon" component={ComingSoonScreen} />
     {/* Billing */}
@@ -216,6 +213,8 @@ const RootNavigator = () => {
 };
 
 import * as Linking from 'expo-linking';
+import * as Notifications from 'expo-notifications';
+import { scheduleNewsNotification } from './src/utils/notifications';
 import { LogBox } from 'react-native';
 
 // Suppress known non-critical network errors from showing as red LogBox popups.
@@ -254,7 +253,6 @@ const linking = {
           NoteDetailScreen: 'note/:noteId',
           AINotesMaker: 'ai-notes-maker',
           Roadmap: 'roadmap',
-          QuestionSetList: 'questions',
           Essay: 'essay',
           Reference: 'reference',
           MindMap: 'mindmap',
@@ -263,7 +261,7 @@ const linking = {
           Progress: 'progress',
           Settings: 'settings',
           Articles: 'Articles',
-          QuestionPaper: 'question-bank/:questionSetId',
+          Billing: 'billing',
         },
       },
       Auth: {
@@ -369,6 +367,21 @@ export default function App() {
 
     return () => sub.remove();
   }, [handleSharedUrl]);
+
+  React.useEffect(() => {
+    // Schedule daily 8 AM news notification
+    scheduleNewsNotification();
+
+    // When user taps the news notification, navigate to Articles
+    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+      const data = response.notification.request.content.data;
+      if (data?.type === 'daily-news' && navigationRef.current) {
+        navigationRef.current.navigate('Main', { screen: 'Articles' });
+      }
+    });
+
+    return () => sub.remove();
+  }, []);
 
   if (!fontsLoaded) {
     return <LoadingScreen />;
