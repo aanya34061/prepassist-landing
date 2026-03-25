@@ -28,6 +28,7 @@ import {
 import { TagPicker } from '../components/TagPicker';
 import { summarizeNoteContent } from '../services/aiSummarizer';
 import { smartScrape, isValidUrl, extractDomain } from '../services/webScraper';
+import { saveArticle as saveToSavedArticles } from '../../../services/savedArticlesService';
 import { TypeWriterText } from '../../../components/TypeWriterText';
 import { useTheme } from '../../../features/Reference/theme/ThemeContext';
 import { useAuth } from '../../../context/AuthContext';
@@ -398,6 +399,11 @@ export const CreateNoteScreen: React.FC<CreateNoteScreenProps> = ({ navigation, 
                 setNoteSources(prev => prev.map(s =>
                     s.id === sourceId ? { ...s, content: scrapedContent, label: result.title || domain } : s
                 ));
+
+                // Also save to Saved Articles section (in background, don't block)
+                saveToSavedArticles(sourceLinkUrl.trim()).catch(e =>
+                    console.warn('[CreateNote] Background save to Saved Articles failed:', e)
+                );
 
                 Alert.alert('Content Extracted', `${result.contentBlocks.length} blocks from ${domain}`);
             }
