@@ -1,62 +1,62 @@
 /**
- * PDF Text Extraction using pdfjs-dist (no OCR needed for text-based PDFs)
- * Returns extracted text or empty string if PDF is scanned/image-based.
- *
- * All pdfjs-dist usage is fully isolated — a failure here NEVER crashes the app.
+ * PDF Text Extraction using Gemini via OpenRouter API.
+ * Sends the PDF as base64 to Gemini and asks it to extract all text.
+ * Returns extracted text or empty string on failure.
  */
-import { Platform } from 'react-native';
+import { OPENROUTER_API_KEY } from './secureKey';
+
+const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
 /**
- * Extract text from a PDF using pdfjs-dist.
- * Works on web platform only. Returns empty string on native or on any failure.
+ * Extract text from a PDF using Gemini API.
  *
- * @param {string} source - File URI / blob URI (sourceType='uri') or base64 string (sourceType='base64')
- * @param {'uri' | 'base64'} sourceType
- * @returns {Promise<string>}
+ * @param {string} base64Data - Raw base64 string of the PDF
+ * @param {'uri' | 'base64'} sourceType - Only 'base64' is supported
+ * @returns {Promise<string>} Extracted text, or empty string on failure
  */
-export async function extractTextFromPDF(source, sourceType = 'uri') {
-  if (Platform.OS !== 'web') return '';
+export async function extractTextFromPDF(base64Data, sourceType = 'base64') {
+  if (sourceType !== 'base64' || !base64Data) return '';
 
   try {
-    // Lazy-load pdfjs-dist only when actually needed
-    let pdfjs;
-    try {
-      pdfjs = require('pdfjs-dist/legacy/build/pdf');
-    } catch (loadErr) {
-      console.warn('[pdfTextExtract] Could not load pdfjs-dist:', loadErr?.message);
+    const response = await fetch(OPENROUTER_BASE_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash',
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: 'Extract ALL text content from this PDF document. Return ONLY the raw text, preserving paragraphs and structure. Do not add any commentary, headers, or formatting — just the exact text from the document.',
+              },
+              {
+                type: 'image_url',
+                image_url: {
+                  url: `data:application/pdf;base64,${base64Data}`,
+                },
+              },
+            ],
+          },
+        ],
+        max_tokens: 8192,
+        temperature: 0,
+      }),
+    });
+
+    if (!response.ok) {
+      console.warn('[pdfTextExtract] API error:', response.status);
       return '';
     }
 
-    // Disable worker to avoid CDN/CORS issues
-    if (pdfjs.GlobalWorkerOptions) {
-      pdfjs.GlobalWorkerOptions.workerSrc = '';
-    }
-
-    let data;
-    if (sourceType === 'base64') {
-      const bin = atob(source);
-      const bytes = new Uint8Array(bin.length);
-      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-      data = bytes;
-    } else {
-      const resp = await fetch(source);
-      const buf = await resp.arrayBuffer();
-      data = new Uint8Array(buf);
-    }
-
-    const pdf = await pdfjs.getDocument({ data, disableWorker: true }).promise;
-    const parts = [];
-
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const tc = await page.getTextContent();
-      const text = tc.items.map((it) => it.str).join(' ');
-      if (text.trim()) parts.push(text.trim());
-    }
-
-    const fullText = parts.join('\n\n');
-    console.log(`[pdfTextExtract] Extracted ${fullText.length} chars from ${pdf.numPages} pages`);
-    return fullText;
+    const result = await response.json();
+    const text = result?.choices?.[0]?.message?.content || '';
+    console.log(`[pdfTextExtract] Gemini extracted ${text.length} chars`);
+    return text;
   } catch (err) {
     console.warn('[pdfTextExtract] Failed:', err?.message || err);
     return '';
