@@ -669,17 +669,20 @@ function parseMCQsFromResponse(content: string): MCQ[] {
     return parseMCQResponse(content);
 }
 
-// Generate a single batch of MCQs with rate limiting
-async function generateBatch(base64Data: string, mimeType: string, batchNum: number, batchSize: number, totalCount: number): Promise<MCQ[]> {
+// Generate a single batch of MCQs from text with rate limiting
+async function generateBatch(textContent: string, _mimeType: string, batchNum: number, batchSize: number, totalCount: number): Promise<MCQ[]> {
     // Handle rate limiting before making request
     await handleRateLimit();
 
-    const prompt = `You are an expert UPSC exam question creator. Analyze the PDF and create EXACTLY ${batchSize} MCQs.
+    const prompt = `You are an expert UPSC exam question creator. Based on the following text from a study document, create EXACTLY ${batchSize} MCQs.
 
 This is batch ${batchNum} of ${Math.ceil(totalCount / batchSize)}. Generate questions ${((batchNum - 1) * batchSize) + 1} to ${Math.min(batchNum * batchSize, totalCount)}.
 
+TEXT FROM DOCUMENT:
+${textContent}
+
 REQUIREMENTS:
-- Create EXACTLY ${batchSize} MCQs from the document content
+- Create EXACTLY ${batchSize} MCQs from the text content
 - Each question must test conceptual understanding
 - 4 options (A, B, C, D) per question - each option should be plausible
 - Exactly ONE correct answer per question
@@ -688,17 +691,9 @@ REQUIREMENTS:
 RESPOND WITH VALID JSON ONLY (no markdown, no code blocks):
 {"mcqs":[{"question":"Full question text","optionA":"Option A text","optionB":"Option B text","optionC":"Option C text","optionD":"Option D text","correctAnswer":"A","explanation":"Clear explanation"}]}`;
 
-    // Build content: use 'file' type for PDFs, 'image_url' for images
-    const fileContent = mimeType === 'application/pdf'
-        ? { type: 'file', file: { filename: 'document.pdf', file_data: `data:${mimeType};base64,${base64Data}` } }
-        : { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Data}` } };
-
     const messages = [{
         role: 'user',
-        content: [
-            { type: 'text', text: prompt },
-            fileContent
-        ]
+        content: prompt
     }];
 
     try {
@@ -783,38 +778,37 @@ async function generateMCQsFromPDF(base64Data: string, fileName: string, mimeTyp
         throw new Error('API key not configured');
     }
 
-    // Reset rate limiter for fresh session
-    resetRateLimiter();
-
     const startTime = Date.now();
 
-    // For small counts, use single request
-    if (count <= 20) {
-        const prompt = `You are an expert UPSC exam question creator. Carefully analyze the entire PDF document and create EXACTLY ${count} high-quality Multiple Choice Questions (MCQs).
+    // ── STEP A: Extract text from PDF via OCR ──
+    console.log('[PDF-MCQ] Extracting text from PDF via OCR...');
+    const extractedText = await extractTextFromPDF(base64Data, mimeType, fileName);
+
+    if (!extractedText || extractedText.length < 30) {
+        throw new Error('Could not extract text from PDF. Please try a different file or a clearer scan.');
+    }
+
+    console.log(`[PDF-MCQ] Extracted ${extractedText.length} chars of text`);
+
+    // ── STEP B: Generate MCQs from extracted text ──
+    const textToUse = extractedText.substring(0, CONFIG.MAX_TEXT_LENGTH);
+
+    if (count <= 25) {
+        // Single request for small counts
+        const prompt = `You are an expert UPSC exam question creator. Based on the following text from a study document, create EXACTLY ${count} high-quality Multiple Choice Questions (MCQs).
+
+TEXT FROM DOCUMENT:
+${textToUse}
 
 REQUIREMENTS:
-- Create EXACTLY ${count} MCQs covering key topics from the document
+- Create EXACTLY ${count} MCQs covering key topics from the text
 - Each question must test conceptual understanding, not rote memorization
 - 4 options (A, B, C, D) per question - each option should be plausible
 - Exactly ONE correct answer per question
 - Provide a clear, concise explanation for each correct answer
-- Questions and options should be well-formatted and properly aligned
 
 RESPOND WITH VALID JSON ONLY (no markdown, no code blocks):
 {"mcqs":[{"question":"Full question text here","optionA":"Option A text","optionB":"Option B text","optionC":"Option C text","optionD":"Option D text","correctAnswer":"A","explanation":"Clear explanation of why this is correct"}]}`;
-
-        // Build content: use 'file' type for PDFs, 'image_url' for images
-        const fileContent = mimeType === 'application/pdf'
-            ? { type: 'file', file: { filename: fileName, file_data: `data:${mimeType};base64,${base64Data}` } }
-            : { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Data}` } };
-
-        const messages = [{
-            role: 'user',
-            content: [
-                { type: 'text', text: prompt },
-                fileContent
-            ]
-        }];
 
         const response = await fetch(CONFIG.OPENROUTER_URL, {
             method: 'POST',
@@ -826,77 +820,30 @@ RESPOND WITH VALID JSON ONLY (no markdown, no code blocks):
             },
             body: JSON.stringify({
                 model: CONFIG.AI_MODEL,
-                messages: messages,
+                messages: [{ role: 'user', content: prompt }],
                 temperature: 0.7,
                 max_tokens: 8192,
             }),
         });
 
         if (!response.ok) {
-            console.warn(`[PDF-MCQ] Direct PDF API error: ${response.status}, falling back to OCR`);
-        } else {
-            const data = await response.json();
-            const content = data.choices?.[0]?.message?.content;
-
-            if (content) {
-                const mcqs = parseMCQsFromResponse(content);
-                if (mcqs.length > 0) {
-                    console.log(`[PDF-MCQ] Generated ${mcqs.length} MCQs in ${(Date.now() - startTime) / 1000}s`);
-                    return mcqs;
-                }
-            }
-            console.warn('[PDF-MCQ] Direct PDF approach returned no MCQs, falling back to OCR');
+            const errText = await response.text().catch(() => '');
+            throw new Error(`API Error ${response.status}: ${errText.substring(0, 200)}`);
         }
 
-        // ── FALLBACK: Extract text via OCR, then generate MCQs from text ──
-        console.log('[PDF-MCQ] Using OCR fallback...');
-        const extractedText = await extractTextFromPDF(base64Data, mimeType, fileName);
+        const data = await response.json();
+        const content = data.choices?.[0]?.message?.content;
 
-        if (!extractedText || extractedText.length < 50) {
-            throw new Error('Could not extract text from PDF. Please try a different file.');
+        if (!content) {
+            throw new Error('AI returned empty response. Please try again.');
         }
 
-        const textPrompt = `You are an expert UPSC exam question creator. Based on the following text extracted from a document, create EXACTLY ${count} high-quality MCQs.
-
-TEXT FROM DOCUMENT:
-${extractedText.substring(0, CONFIG.MAX_TEXT_LENGTH)}
-
-RESPOND WITH VALID JSON ONLY (no markdown, no code blocks):
-{"mcqs":[{"question":"Full question text","optionA":"Option A text","optionB":"Option B text","optionC":"Option C text","optionD":"Option D text","correctAnswer":"A","explanation":"Clear explanation"}]}`;
-
-        const textResponse = await fetch(CONFIG.OPENROUTER_URL, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${CONFIG.OPENROUTER_API_KEY}`,
-                'Content-Type': 'application/json',
-                'HTTP-Referer': 'https://upsc-prep.app',
-                'X-Title': 'UPSC PDF MCQ Generator',
-            },
-            body: JSON.stringify({
-                model: CONFIG.AI_MODEL,
-                messages: [{ role: 'user', content: textPrompt }],
-                temperature: 0.7,
-                max_tokens: 8192,
-            }),
-        });
-
-        if (!textResponse.ok) {
-            throw new Error(`API Error: ${textResponse.status}`);
-        }
-
-        const textData = await textResponse.json();
-        const textContent = textData.choices?.[0]?.message?.content;
-
-        if (!textContent) {
-            throw new Error('No content in response');
-        }
-
-        const mcqs = parseMCQsFromResponse(textContent);
-        console.log(`[PDF-MCQ] Generated ${mcqs.length} MCQs via OCR fallback in ${(Date.now() - startTime) / 1000}s`);
+        const mcqs = parseMCQsFromResponse(content);
+        console.log(`[PDF-MCQ] Generated ${mcqs.length} MCQs in ${(Date.now() - startTime) / 1000}s`);
         return mcqs;
     }
 
-    // For large counts, use parallel batch processing
+    // For large counts, use parallel batch processing with text
     const batchSize = BATCH_CONFIG.BATCH_SIZE;
     const totalBatches = Math.ceil(count / batchSize);
 
@@ -912,7 +859,7 @@ RESPOND WITH VALID JSON ONLY (no markdown, no code blocks):
         for (let batchNum = groupStart + 1; batchNum <= groupEnd; batchNum++) {
             const thisBatchSize = Math.min(batchSize, count - (batchNum - 1) * batchSize);
             batchPromises.push(
-                processBatchWithRetry(base64Data, mimeType, batchNum, thisBatchSize, count)
+                processBatchWithRetry(textToUse, mimeType, batchNum, thisBatchSize, count)
             );
         }
 
