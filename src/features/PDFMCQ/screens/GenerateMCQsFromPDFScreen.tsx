@@ -54,8 +54,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 const CONFIG = {
     OPENROUTER_API_KEY: OPENROUTER_API_KEY,
     OPENROUTER_URL: 'https://openrouter.ai/api/v1/chat/completions',
-    // Claude Sonnet - superior PDF parsing and MCQ format alignment
-    AI_MODEL: 'anthropic/claude-sonnet-4-5-20250514',
+    // Claude Sonnet 4.5 - superior PDF parsing and MCQ format alignment
+    AI_MODEL: 'anthropic/claude-sonnet-4.5',
     // File size limits
     MAX_FILE_SIZE_MB: 20,
     MAX_TEXT_LENGTH: 200000,

@@ -91,7 +91,7 @@ export const generateMCQsFromText = async (text: string): Promise<MCQ[]> => {
                 "Content-Type": "application/json",
             },
             body: JSON.stringify({
-                model: "anthropic/claude-sonnet-4-5-20250514",
+                model: "anthropic/claude-sonnet-4.5",
                 messages: [
                     {
                         "role": "user",

@@ -23,7 +23,7 @@ export const AI_MODELS = {
     GEMINI_PRO: 'google/gemini-3-flash-preview',
 
     // Claude Models (Anthropic) - Best for analysis and PDF parsing
-    CLAUDE_SONNET: 'anthropic/claude-sonnet-4-5-20250514',
+    CLAUDE_SONNET: 'anthropic/claude-sonnet-4.5',
     CLAUDE_HAIKU: 'anthropic/claude-3-haiku',
 
     // OpenAI Models

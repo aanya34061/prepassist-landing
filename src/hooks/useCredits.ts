@@ -146,8 +146,8 @@ export function useCredits() {
                 }
 
                 // RPC returned data for an existing subscriber
-                // Prefer current_credits (DB column name) over credits (may be 0 incorrectly)
-                const fetchedCredits = creditData.current_credits ?? creditData.credits ?? 0;
+                // Use || to pick whichever field has a non-zero value (avoids 0-vs-real mismatch)
+                const fetchedCredits = creditData.current_credits || creditData.credits || 0;
                 const fetchedPlan = resolvePlanType(creditData.plan_type);
                 setCredits(fetchedCredits);
                 setPlanType(fetchedPlan);
