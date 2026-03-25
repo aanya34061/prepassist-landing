@@ -225,27 +225,25 @@ export const AuthProvider = ({ children }) => {
   };
 
   const signOut = async () => {
-    try {
-      console.log('[AuthContext] Signing out user');
+    console.log('[AuthContext] Signing out user');
 
-      // Sign out from Supabase if authenticated
-      if (user?.provider === 'supabase') {
-        await supabase.auth.signOut();
-      }
+    // Clear local state immediately so UI updates instantly
+    setUser(null);
+    setIsGuestMode(false);
 
-      await AsyncStorage.removeItem(USER_STORAGE_KEY);
-      await AsyncStorage.removeItem(GUEST_USER_KEY);
-      await AsyncStorage.removeItem(SUPABASE_SESSION_KEY);
-      setUser(null);
-      setIsGuestMode(false);
-    } catch (error) {
-      console.error('[AuthContext] Error signing out:', error);
-      // Force clear even on error
-      await AsyncStorage.removeItem(USER_STORAGE_KEY);
-      await AsyncStorage.removeItem(GUEST_USER_KEY);
-      await AsyncStorage.removeItem(SUPABASE_SESSION_KEY);
-      setUser(null);
-      setIsGuestMode(false);
+    // Clear storage in parallel
+    await Promise.all([
+      AsyncStorage.removeItem(USER_STORAGE_KEY),
+      AsyncStorage.removeItem(GUEST_USER_KEY),
+      AsyncStorage.removeItem(SUPABASE_SESSION_KEY),
+    ]).catch(() => {});
+
+    // Sign out from Supabase in background (don't block UI)
+    if (user?.provider === 'supabase') {
+      Promise.race([
+        supabase.auth.signOut(),
+        new Promise(r => setTimeout(r, 3000)), // 3s timeout
+      ]).catch(() => {});
     }
   };
 
