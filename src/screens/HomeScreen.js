@@ -22,7 +22,6 @@ import { useWebStyles } from '../components/WebContainer';
 import { checkNewsMatches, markMatchAsRead, forceRefreshMatches } from '../services/NewsMatchService';
 import CreditsBadge from '../components/CreditsBadge';
 import AIOnboarding, { useOnboarding } from '../components/AIOnboarding';
-import NotificationCenter from '../components/NotificationCenter';
 
 export default function HomeScreen({ navigation }) {
   const { user } = useAuth();

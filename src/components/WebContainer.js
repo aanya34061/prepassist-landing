@@ -1,6 +1,5 @@
 import React, { createContext, useContext } from 'react';
 import { View, StyleSheet, Platform, useWindowDimensions } from 'react-native';
-import { useTheme } from '../features/Reference/theme/ThemeContext';
 
 // Context to provide web padding values to all screens
 const WebPaddingContext = createContext({ horizontalPadding: 16 });
@@ -9,12 +8,12 @@ export const useWebPadding = () => useContext(WebPaddingContext);
 
 /**
  * WebLayout - Wraps the entire app content for web-specific styling
- * Provides horizontal padding on web to prevent content from edge-to-edge
+ * Provides responsive horizontal padding on web to prevent content from edge-to-edge
  */
 export function WebLayout({ children }) {
   const { width } = useWindowDimensions();
   const isWeb = Platform.OS === 'web';
-  
+
   if (!isWeb) {
     return (
       <WebPaddingContext.Provider value={{ horizontalPadding: 0, isWeb: false }}>
@@ -22,9 +21,8 @@ export function WebLayout({ children }) {
       </WebPaddingContext.Provider>
     );
   }
-  
+
   // Calculate responsive horizontal padding for web
-  // Small screens: 16px, Medium: 40px, Large: 80px, XL: 120px
   let horizontalPadding = 16;
   if (width > 1400) {
     horizontalPadding = 160;
@@ -35,7 +33,7 @@ export function WebLayout({ children }) {
   } else if (width > 768) {
     horizontalPadding = 48;
   }
-  
+
   return (
     <WebPaddingContext.Provider value={{ horizontalPadding, isWeb: true }}>
       <View style={styles.webLayoutOuter}>
@@ -52,7 +50,7 @@ export function WebLayout({ children }) {
 export function useWebStyles() {
   const { width } = useWindowDimensions();
   const isWeb = Platform.OS === 'web';
-  
+
   // Calculate responsive horizontal padding for web
   let horizontalPadding = 16;
   if (isWeb) {
@@ -66,11 +64,10 @@ export function useWebStyles() {
       horizontalPadding = 48;
     }
   }
-  
+
   return {
     isWeb,
     horizontalPadding,
-    // Content max-width for readability (optional use)
     contentMaxWidth: 1200,
   };
 }
@@ -87,4 +84,3 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 });
-

@@ -314,7 +314,6 @@ const styles = StyleSheet.create({
         borderTopRightRadius: 24,
         shadowColor: '#000',
         elevation: 20,
-        // Web Specific Centering
         ...(Platform.OS === 'web' ? {
             width: '100%',
             maxWidth: 600,
