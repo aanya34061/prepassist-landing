@@ -407,16 +407,28 @@ export const CreateNoteScreen: React.FC<CreateNoteScreenProps> = ({ navigation, 
                 ));
 
                 // Also save to Saved Articles section with already-scraped data
-                saveArticleDirect({
-                    url: sourceLinkUrl.trim(),
-                    title: result.title || domain,
-                    content: scrapedContent,
-                    domain,
-                }).catch(e =>
-                    console.warn('[CreateNote] Background save to Saved Articles failed:', e)
-                );
-
-                Alert.alert('Content Extracted', `${result.contentBlocks.length} blocks from ${domain}`);
+                try {
+                    const saveResult = await saveArticleDirect({
+                        url: sourceLinkUrl.trim(),
+                        title: result.title || domain,
+                        content: scrapedContent,
+                        domain,
+                    });
+                    if (saveResult.isDuplicate) {
+                        Alert.alert('Article Saved', `Content extracted from ${domain}.\nThis article was already in your Saved Articles.`, [
+                            { text: 'OK' },
+                            { text: 'View Saved Articles', onPress: () => navigation.navigate('SavedArticles') },
+                        ]);
+                    } else {
+                        Alert.alert('Article Saved', `Content extracted and saved to your Saved Articles.`, [
+                            { text: 'OK' },
+                            { text: 'View Saved Articles', onPress: () => navigation.navigate('SavedArticles') },
+                        ]);
+                    }
+                } catch (e) {
+                    console.warn('[CreateNote] Save to Saved Articles failed:', e);
+                    Alert.alert('Content Extracted', `${result.contentBlocks.length} blocks from ${domain}`);
+                }
             }
         } catch (error) {
             console.error('Scraping error:', error);
