@@ -9,6 +9,7 @@ import {
   Animated,
   Platform,
   Easing,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,10 +23,11 @@ const isTablet = isWeb && width > 600;
 // ─── PrepAssist Logo ───────────────────────────────────────────
 const PrepAssistLogo = ({ small }) => (
   <View style={styles.logoRow}>
-    <View style={[styles.logoIcon, small && { width: 24, height: 24 }]}>
-      <View style={[styles.logoArrowOrange, small && { borderLeftWidth: 5, borderRightWidth: 5, borderBottomWidth: 14, left: 1, top: 2 }]} />
-      <View style={[styles.logoArrowBlue, small && { borderLeftWidth: 5, borderRightWidth: 5, borderBottomWidth: 14, right: 1, top: 2 }]} />
-    </View>
+    <Image
+      source={require('../../assets/icon.png')}
+      style={{ width: small ? 24 : 32, height: small ? 24 : 32, borderRadius: small ? 6 : 8 }}
+      resizeMode="contain"
+    />
     <Text style={[styles.logoText, small && { fontSize: 14 }]}>
       Prep<Text style={styles.logoTextLight}>Assist</Text>
     </Text>
@@ -252,7 +254,7 @@ export default function LandingScreen({ navigation }) {
                 <TouchableOpacity onPress={() => scrollRef.current?.scrollTo({ y: testimonialsY, animated: true })}>
                   <Text style={styles.navLink}>TESTIMONIALS</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => navigation.navigate('Pricing')}>
+                <TouchableOpacity onPress={() => navigation.navigate('Billing')}>
                   <Text style={styles.navLink}>PRICING</Text>
                 </TouchableOpacity>
               </View>
@@ -284,7 +286,7 @@ export default function LandingScreen({ navigation }) {
               <TouchableOpacity onPress={() => { setMenuOpen(false); scrollRef.current?.scrollTo({ y: testimonialsY, animated: true }); }}>
                 <Text style={styles.mobileMenuLink}>Testimonials</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => { setMenuOpen(false); navigation.navigate('Pricing'); }}>
+              <TouchableOpacity onPress={() => { setMenuOpen(false); navigation.navigate('Billing'); }}>
                 <Text style={styles.mobileMenuLink}>Pricing</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.mobileSignUpBtn} onPress={() => { setMenuOpen(false); handleGetStarted(); }}>
@@ -333,7 +335,7 @@ export default function LandingScreen({ navigation }) {
                   <Text style={styles.btnPrimaryText}>Start Learning Free</Text>
                   <Ionicons name="arrow-forward" size={16} color="#FFF" />
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.btnSecondary} onPress={() => navigation.navigate('Pricing')}>
+                <TouchableOpacity style={styles.btnSecondary} onPress={() => navigation.navigate('Billing')}>
                   <Ionicons name="play" size={14} color="#1A1F36" />
                   <Text style={styles.btnSecondaryText}>Watch Demo</Text>
                 </TouchableOpacity>
@@ -405,7 +407,7 @@ export default function LandingScreen({ navigation }) {
             ))}
           </View>
 
-          <TouchableOpacity style={styles.viewAllLink} onPress={() => navigation.navigate('Pricing')}>
+          <TouchableOpacity style={styles.viewAllLink} onPress={() => navigation.navigate('Billing')}>
             <Text style={styles.viewAllText}>View all features</Text>
             <Ionicons name="arrow-forward" size={14} color="#2196F3" />
           </TouchableOpacity>
@@ -444,7 +446,7 @@ export default function LandingScreen({ navigation }) {
               <TouchableOpacity style={styles.ctaPrimaryBtn} onPress={handleGetStarted}>
                 <Text style={styles.ctaPrimaryText}>Get Started Free</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.ctaSecondaryBtn} onPress={() => navigation.navigate('Pricing')}>
+              <TouchableOpacity style={styles.ctaSecondaryBtn} onPress={() => navigation.navigate('Billing')}>
                 <Text style={styles.ctaSecondaryText}>View Pricing</Text>
               </TouchableOpacity>
             </View>
