@@ -85,6 +85,24 @@ const SOURCE_TYPES = [
 let sourceCounter = Date.now();
 const generateSourceId = () => String(++sourceCounter);
 
+/** Read a file URI as base64 — works on both web (blob URIs) and native */
+const readFileAsBase64 = async (uri: string): Promise<string> => {
+    if (Platform.OS === 'web') {
+        const resp = await fetch(uri);
+        const blob = await resp.blob();
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                const dataUrl = reader.result as string;
+                resolve(dataUrl.split(',')[1] || '');
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    }
+    return FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
+};
+
 export const CreateNoteScreen: React.FC<CreateNoteScreenProps> = ({ navigation, route }) => {
     const initialNote = route.params?.initialNote;
     const { theme, isDark } = useTheme();
@@ -168,10 +186,14 @@ export const CreateNoteScreen: React.FC<CreateNoteScreenProps> = ({ navigation, 
             // Extract text from PDF in background
             setProcessingPdfIds(prev => new Set(prev).add(sourceId));
             try {
+                // Read file as base64 first (needed for both pdfjs-dist and OCR)
+                const base64 = await readFileAsBase64(asset.uri);
+                const sizeInKB = (base64.length * 3) / 4 / 1024;
+
                 // Try native PDF text extraction first (pdfjs-dist, no OCR artifacts)
                 let extractedText = '';
                 try {
-                    extractedText = await extractTextFromPDF(asset.uri, 'uri');
+                    extractedText = await extractTextFromPDF(base64, 'base64');
                 } catch (e) {
                     console.log('Native PDF extraction failed, will try OCR:', e);
                 }
@@ -183,8 +205,6 @@ export const CreateNoteScreen: React.FC<CreateNoteScreenProps> = ({ navigation, 
                     ));
                 } else {
                     // Fall back to OCR for scanned/image PDFs
-                    const base64 = await FileSystem.readAsStringAsync(asset.uri, { encoding: 'base64' });
-                    const sizeInKB = (base64.length * 3) / 4 / 1024;
                     if (sizeInKB > 1024) {
                         Alert.alert('PDF Too Large', 'PDF exceeds 1MB limit for OCR. The file has been attached but text could not be extracted.');
                         setProcessingPdfIds(prev => { const s = new Set(prev); s.delete(sourceId); return s; });
@@ -284,7 +304,7 @@ export const CreateNoteScreen: React.FC<CreateNoteScreenProps> = ({ navigation, 
         // OCR the image
         setProcessingCameraIds(prev => new Set(prev).add(sourceId));
         try {
-            const base64 = await FileSystem.readAsStringAsync(imageUri, { encoding: 'base64' });
+            const base64 = await readFileAsBase64(imageUri);
             const sizeInKB = (base64.length * 3) / 4 / 1024;
             if (sizeInKB > 1024) {
                 Alert.alert('Image Too Large', 'Image exceeds 1MB. Please crop smaller or take a closer photo.');
