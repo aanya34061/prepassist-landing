@@ -547,12 +547,28 @@ export const CreateNoteScreen: React.FC<CreateNoteScreenProps> = ({ navigation, 
                 syncNoteToFirebase(user.id, savedNote);
             }
 
+            // Check if any source was a link — if so, navigate to Saved Articles
+            const hasLinkSource = noteSources.some(s => s.type === 'link');
+
             if (Platform.OS === 'web') {
                 window.alert('Note saved!');
-                navigation.goBack();
+                if (hasLinkSource) {
+                    navigation.navigate('SavedArticles');
+                } else {
+                    navigation.goBack();
+                }
             } else {
                 Alert.alert('Success', 'Note saved!', [
-                    { text: 'OK', onPress: () => navigation.goBack() },
+                    {
+                        text: 'OK',
+                        onPress: () => {
+                            if (hasLinkSource) {
+                                navigation.navigate('SavedArticles');
+                            } else {
+                                navigation.goBack();
+                            }
+                        },
+                    },
                 ]);
             }
         } catch (error) {

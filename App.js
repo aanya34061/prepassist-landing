@@ -187,7 +187,6 @@ const MainNavigator = () => (
 const RootNavigator = () => {
   const { isLoading, isAuthenticated } = useAuth();
   const [forceReady, setForceReady] = React.useState(false);
-  const isWeb = Platform.OS === 'web';
 
   // Safety net: if auth check hangs more than 6 seconds, proceed anyway
   React.useEffect(() => {
@@ -199,17 +198,7 @@ const RootNavigator = () => {
     return <LoadingScreen />;
   }
 
-  // On web: always show Landing first, then user navigates to Login → Main app
-  // On native: skip landing if already logged in
-  if (isWeb) {
-    return (
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="Auth" component={AuthNavigator} options={{ animation: 'fade' }} />
-        <Stack.Screen name="Main" component={MainNavigator} options={{ animation: 'fade' }} />
-      </Stack.Navigator>
-    );
-  }
-
+  // Conditionally show Auth or Main based on auth state (same for web and native)
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       {!isAuthenticated ? (
