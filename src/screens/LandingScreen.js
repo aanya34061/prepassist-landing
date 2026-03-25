@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../context/AuthContext';
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
@@ -195,12 +196,20 @@ const GridBackground = () => (
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════
 export default function LandingScreen({ navigation }) {
+  const { isAuthenticated } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const scrollRef = useRef(null);
   const [featuresY, setFeaturesY] = useState(0);
   const [testimonialsY, setTestimonialsY] = useState(0);
 
-  const handleGetStarted = () => navigation.navigate('Login');
+  // If already logged in, go straight to app; otherwise go to login
+  const handleGetStarted = () => {
+    if (isAuthenticated) {
+      navigation.navigate('Main', { screen: 'NewHome' });
+    } else {
+      navigation.navigate('Login');
+    }
+  };
 
   const features = [
     { icon: 'hardware-chip-outline', title: 'Adaptive Question Engine', description: 'Our AI parses The Hindu, Indian Express, and NCERTs to generate exam-ready MCQs. It adapts difficulty based on your performance history.', iconBg: 'blue' },
