@@ -59,15 +59,10 @@ export function useAIFeature(feature: FeatureType): UseAIFeatureReturn {
      * Deducts credits before execution
      */
     const executeWithCredits = async (callback: () => Promise<void>): Promise<boolean> => {
-        if (!canUse) {
-            showInsufficientCreditsAlert();
-            return false;
-        }
-
         setIsChecking(true);
 
         try {
-            // Deduct credits first
+            // Deduct credits (returns true even on DB failure — only blocks on genuine insufficient)
             const success = await deductCredits(feature);
 
             if (!success) {

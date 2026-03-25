@@ -1108,25 +1108,6 @@ export default function GenerateMCQsFromPDFScreen() {
 
     // ===================== MAIN PROCESS =====================
     const startProcess = async () => {
-        // Check credits first (5 credits for PDF MCQ)
-        if (!hasEnoughCredits('pdf_mcq')) {
-            if (Platform.OS === 'web') {
-                if (window.confirm(`Credits Required\n\nPDF MCQ generation costs 5 credits.\nYou have ${credits} credits available.\n\nClick OK to buy credits.`)) {
-                    navigation.navigate('Billing');
-                }
-            } else {
-                Alert.alert(
-                    '💳 Credits Required',
-                    `PDF MCQ generation costs 5 credits.\n\nYou have ${credits} credits available.\n\nBuy credits to continue.`,
-                    [
-                        { text: 'Cancel', style: 'cancel' },
-                        { text: 'Buy Credits', onPress: () => navigation.navigate('Billing') }
-                    ]
-                );
-            }
-            return;
-        }
-
         const count = Math.min(1000, Math.max(1, parseInt(mcqCount) || 10));
         // With speed-optimized parallel processing: 8 batches of 25 MCQs = 200 MCQs per parallel round
         // ~5-7 seconds per round, so 100 MCQs in ~10s, 200 in ~15s

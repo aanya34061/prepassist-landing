@@ -212,11 +212,13 @@ export function useCredits() {
     }, [userId]);
 
     // Check if user has enough credits for a feature
+    // Always allows if credits haven't loaded yet or if bypass is active
     const hasEnoughCredits = useCallback((feature: FeatureType): boolean => {
         if (canBypassCredits()) return true;
+        if (loading || !initialized) return true; // Don't block while loading
         const cost = CREDIT_COSTS[feature];
         return credits >= cost;
-    }, [credits]);
+    }, [credits, loading, initialized]);
 
     // Deduct credits for using a feature via RPC (bypasses RLS)
     const useCredits = useCallback(async (feature: FeatureType): Promise<boolean> => {
