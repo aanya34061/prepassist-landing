@@ -514,12 +514,21 @@ export const CreateNoteScreen: React.FC<CreateNoteScreenProps> = ({ navigation, 
                 syncNoteToFirebase(user.id, savedNote);
             }
 
-            Alert.alert('Success', 'Note saved!', [
-                { text: 'OK', onPress: () => navigation.goBack() },
-            ]);
+            if (Platform.OS === 'web') {
+                window.alert('Note saved!');
+                navigation.goBack();
+            } else {
+                Alert.alert('Success', 'Note saved!', [
+                    { text: 'OK', onPress: () => navigation.goBack() },
+                ]);
+            }
         } catch (error) {
             console.error('Error saving note:', error);
-            Alert.alert('Error', 'Failed to save note');
+            if (Platform.OS === 'web') {
+                window.alert('Failed to save note');
+            } else {
+                Alert.alert('Error', 'Failed to save note');
+            }
         } finally {
             setIsSaving(false);
         }

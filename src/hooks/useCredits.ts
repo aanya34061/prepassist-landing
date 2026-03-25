@@ -9,9 +9,26 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
+import { canBypassCredits } from '../utils/devMode';
+
+// Cross-platform alert helper
+function showAlert(title: string, message: string, buttons?: Array<{ text: string; onPress?: () => void; style?: string }>) {
+    if (Platform.OS === 'web') {
+        const hasAction = buttons?.find(b => b.text !== 'Cancel' && b.onPress);
+        if (hasAction) {
+            if (window.confirm(`${title}\n\n${message}`)) {
+                hasAction.onPress?.();
+            }
+        } else {
+            window.alert(`${title}\n\n${message}`);
+        }
+    } else {
+        showAlert(title, message, buttons as any);
+    }
+}
 
 // Credit costs for each feature
 export const CREDIT_COSTS = {
@@ -196,6 +213,7 @@ export function useCredits() {
 
     // Check if user has enough credits for a feature
     const hasEnoughCredits = useCallback((feature: FeatureType): boolean => {
+        if (canBypassCredits()) return true;
         const cost = CREDIT_COSTS[feature];
         return credits >= cost;
     }, [credits]);
@@ -204,14 +222,20 @@ export function useCredits() {
     const useCredits = useCallback(async (feature: FeatureType): Promise<boolean> => {
         const cost = CREDIT_COSTS[feature];
 
+        // Dev mode: skip credit deduction entirely
+        if (canBypassCredits()) {
+            console.log(`[Credits] Dev bypass: skipping ${cost} credit deduction for ${feature}`);
+            return true;
+        }
+
         if (!userId) {
-            Alert.alert('Login Required', 'Please login to use AI features.');
+            showAlert('Login Required', 'Please login to use AI features.');
             return false;
         }
 
         // Quick local check first
         if (credits < cost) {
-            Alert.alert(
+            showAlert(
                 'Insufficient Credits',
                 `You need ${cost} credits for ${feature.replace('_', ' ')}. You have ${credits} credits.\n\nPurchase more credits to continue.`,
                 [
@@ -238,7 +262,7 @@ export function useCredits() {
                 if (rpcError.message?.toLowerCase().includes('insufficient') ||
                     rpcError.message?.toLowerCase().includes('not enough')) {
                     await fetchCredits();
-                    Alert.alert(
+                    showAlert(
                         'Insufficient Credits',
                         `You need ${cost} credits for ${feature.replace('_', ' ')}.\n\nPurchase more credits to continue.`,
                         [
@@ -247,7 +271,7 @@ export function useCredits() {
                         ]
                     );
                 } else {
-                    Alert.alert('Error', 'Failed to deduct credits. Please try again.');
+                    showAlert('Error', 'Failed to deduct credits. Please try again.');
                 }
                 return false;
             }
@@ -277,7 +301,7 @@ export function useCredits() {
                     }
                 }
 
-                Alert.alert('Error', 'Failed to deduct credits. Please try again.');
+                showAlert('Error', 'Failed to deduct credits. Please try again.');
                 return false;
             }
 
@@ -289,7 +313,7 @@ export function useCredits() {
             return true;
         } catch (err: any) {
             console.error('[Credits] Deduction error:', err);
-            Alert.alert('Error', 'Failed to process credit usage.');
+            showAlert('Error', 'Failed to process credit usage.');
             return false;
         }
     }, [credits, userId, fetchCredits]);
@@ -299,7 +323,7 @@ export function useCredits() {
         const cost = CREDIT_COSTS[feature];
 
         if (!userId && !userEmail) {
-            Alert.alert(
+            showAlert(
                 'Login Required',
                 'Please login to use AI features.',
                 [{ text: 'OK' }]
@@ -308,7 +332,7 @@ export function useCredits() {
         }
 
         if (credits < cost) {
-            Alert.alert(
+            showAlert(
                 'Insufficient Credits',
                 `This feature requires ${cost} credits.\nYou have ${credits} credits.\n\nBuy more credits to continue.`,
                 [

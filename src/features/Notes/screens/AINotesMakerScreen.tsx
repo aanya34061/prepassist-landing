@@ -522,7 +522,11 @@ export const AINotesMakerScreen: React.FC<{ navigation: any }> = ({ navigation }
                 const result = await createNote(notePayload);
                 if (result && user?.id) syncNoteToFirebase(user.id, result);
                 console.log('[AINotes] Note created:', result);
-                Alert.alert('Success', 'Note saved successfully!');
+                if (Platform.OS === 'web') {
+                    window.alert('Note saved successfully!');
+                } else {
+                    Alert.alert('Success', 'Note saved successfully!');
+                }
             }
 
             setShowNoteEditor(false);

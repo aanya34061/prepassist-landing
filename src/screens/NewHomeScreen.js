@@ -14,6 +14,7 @@ import {
   Modal,
   FlatList,
   Platform,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,8 +29,7 @@ import { useWebStyles } from '../components/WebContainer';
 import { checkNewsMatches, markMatchAsRead, forceRefreshMatches } from '../services/NewsMatchService';
 import CreditsBadge from '../components/CreditsBadge';
 import AIOnboarding, { useOnboarding } from '../components/AIOnboarding';
-import NotificationCenter from '../components/NotificationCenter';
-import { getAllNotes } from '../features/Notes/services/localNotesStorage';
+import { getAllNotes, deleteNote } from '../features/Notes/services/localNotesStorage';
 import { getItem, setItem } from '../features/Notes/services/storage';
 
 // ── Firebase helpers ──────────────────────────────────────────────────────────
@@ -202,6 +202,38 @@ export default function NewHomeScreen({ navigation }) {
     });
   }, []);
 
+  const handleDeleteFlashCard = useCallback((noteId, title) => {
+    const doDelete = async () => {
+      try {
+        await deleteNote(noteId);
+        setFlashCards(prev => prev.filter(c => c.id !== noteId));
+        setLearnedIds(prev => {
+          const next = new Set(prev);
+          next.delete(noteId);
+          setItem(LEARNED_CARDS_KEY, JSON.stringify([...next]));
+          return next;
+        });
+      } catch (e) {
+        console.error('[FlashCards] delete error:', e);
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm(`Remove "${title || 'this note'}" from your flashcards?`)) {
+        doDelete();
+      }
+    } else {
+      Alert.alert(
+        'Delete Flashcard',
+        `Remove "${title || 'this note'}" from your flashcards?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Delete', style: 'destructive', onPress: doDelete },
+        ]
+      );
+    }
+  }, []);
+
   const isVideoUrl = (url) => {
     if (!url) return false;
     const u = url.toLowerCase();
@@ -238,65 +270,37 @@ export default function NewHomeScreen({ navigation }) {
 
         {/* ── Header ─────────────────────────────────────────────────── */}
         <View style={styles.header}>
-          {Platform.OS !== 'web' ? (
-            <>
-              <View style={styles.headerLeft}>
-                <TouchableOpacity onPress={() => navigation.navigate('NewHome')} activeOpacity={0.8}>
-                  <Image
-                    source={require('../../assets/prepassist-logo.png')}
-                    style={styles.headerLogoSmall}
-                    resizeMode="contain"
-                  />
-                </TouchableOpacity>
-              </View>
-              <View style={styles.headerRight}>
-                <View ref={creditsRef} collapsable={false}>
-                  <CreditsBadge compact />
+          <View style={styles.headerLeft}>
+            <TouchableOpacity onPress={() => navigation.navigate('NewHome')} activeOpacity={0.8}>
+              <Image
+                source={require('../../assets/prepassist-logo.png')}
+                style={styles.headerLogoSmall}
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.headerRight}>
+            <View ref={creditsRef} collapsable={false}>
+              <CreditsBadge compact />
+            </View>
+            <TouchableOpacity
+              style={[styles.bellButton, isDark && styles.bellButtonDark]}
+              onPress={() => setShowNotifications(true)}
+            >
+              <Ionicons name="notifications-outline" size={22} color={isDark ? '#FFF' : '#374151'} />
+              {newsMatches.length > 0 && (
+                <View style={styles.bellBadge}>
+                  <Text style={styles.bellBadgeText}>{newsMatches.length}</Text>
                 </View>
-                <TouchableOpacity
-                  style={[styles.bellButton, isDark && styles.bellButtonDark]}
-                  onPress={() => setShowNotifications(true)}
-                >
-                  <Ionicons name="notifications-outline" size={22} color={isDark ? '#FFF' : '#374151'} />
-                  {newsMatches.length > 0 && (
-                    <View style={styles.bellBadge}>
-                      <Text style={styles.bellBadgeText}>{newsMatches.length}</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.settingsButton, isDark && styles.settingsButtonDark]}
-                  onPress={() => navigation.navigate('Settings')}
-                >
-                  <Ionicons name="settings-outline" size={22} color={isDark ? '#FFF' : '#374151'} />
-                </TouchableOpacity>
-              </View>
-            </>
-          ) : (
-            <>
-              <View style={styles.headerLeft}>
-                <TouchableOpacity onPress={() => navigation.navigate('NewHome')} activeOpacity={0.8}>
-                  <Image
-                    source={require('../../assets/prepassist-logo.png')}
-                    style={styles.headerLogoSmall}
-                    resizeMode="contain"
-                  />
-                </TouchableOpacity>
-              </View>
-              <View style={styles.headerRight}>
-                <View ref={creditsRef} collapsable={false}>
-                  <CreditsBadge compact />
-                </View>
-                <NotificationCenter iconColor={isDark ? '#FFF' : '#374151'} />
-                <TouchableOpacity
-                  style={[styles.settingsButton, isDark && styles.settingsButtonDark]}
-                  onPress={() => navigation.navigate('Settings')}
-                >
-                  <Ionicons name="settings-outline" size={22} color={isDark ? '#FFF' : '#374151'} />
-                </TouchableOpacity>
-              </View>
-            </>
-          )}
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.settingsButton, isDark && styles.settingsButtonDark]}
+              onPress={() => navigation.navigate('Settings')}
+            >
+              <Ionicons name="settings-outline" size={22} color={isDark ? '#FFF' : '#374151'} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={[styles.divider, isDark && styles.dividerDark]} />
@@ -335,7 +339,7 @@ export default function NewHomeScreen({ navigation }) {
 
         {/* ── Feature Grid ───────────────────────────────────────────── */}
         <Text style={[styles.sectionTitle, isDark && styles.textWhite, { marginBottom: 14 }]}>Start Learning</Text>
-        <View style={styles.grid}>
+        <View style={[styles.grid, (isWeb && width > 600) && styles.gridWeb]}>
           {FEATURES.map((feature) => (
             <TouchableOpacity
               key={feature.id}
@@ -412,9 +416,14 @@ export default function NewHomeScreen({ navigation }) {
                           </View>
                         ))}
                       </View>
-                      <TouchableOpacity onPress={() => handleMarkLearned(item.id)}>
-                        <Ionicons name={isLearned ? 'checkmark-circle' : 'checkmark-circle-outline'} size={20} color={isLearned ? '#22C55E' : '#9CA3AF'} />
-                      </TouchableOpacity>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <TouchableOpacity onPress={() => handleMarkLearned(item.id)}>
+                          <Ionicons name={isLearned ? 'checkmark-circle' : 'checkmark-circle-outline'} size={20} color={isLearned ? '#22C55E' : '#9CA3AF'} />
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => handleDeleteFlashCard(item.id, item.title)}>
+                          <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                        </TouchableOpacity>
+                      </View>
                     </View>
                   </TouchableOpacity>
                 );
@@ -656,6 +665,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
+  },
+  gridWeb: {
+    gap: 14,
+    justifyContent: 'flex-start',
   },
 
   // Card

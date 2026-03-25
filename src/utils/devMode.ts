@@ -15,6 +15,6 @@ export const isDev = (): boolean => {
     return h === _0x3c(_0x1a) || h === _0x3c(_0x2b) || h?.includes('192.168') || __DEV__;
 };
 
-// Credits bypass for dev - disabled so credits work correctly in all environments
-export const getDevCredits = () => 0;
-export const canBypassCredits = () => false;
+// Credits bypass for dev - enabled on localhost so AI features work during development
+export const getDevCredits = () => 999;
+export const canBypassCredits = () => isDev();

@@ -8,7 +8,7 @@
  */
 
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, Alert, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import useCredits, { CREDIT_COSTS, FeatureType } from '../hooks/useCredits';
@@ -34,17 +34,24 @@ export function useAIFeature(feature: FeatureType): UseAIFeatureReturn {
     const canUse = hasEnoughCredits(feature);
 
     const showInsufficientCreditsAlert = () => {
-        Alert.alert(
-            '💳 Credits Required',
-            `This feature costs ${cost} credits.\n\nYou have ${credits} credits available.\n\nPurchase credits to continue using AI features.`,
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Buy Credits',
-                    onPress: () => navigation.navigate('Billing')
-                },
-            ]
-        );
+        if (Platform.OS === 'web') {
+            const go = window.confirm(
+                `Credits Required\n\nThis feature costs ${cost} credits.\nYou have ${credits} credits available.\n\nClick OK to buy credits.`
+            );
+            if (go) navigation.navigate('Billing');
+        } else {
+            Alert.alert(
+                '💳 Credits Required',
+                `This feature costs ${cost} credits.\n\nYou have ${credits} credits available.\n\nPurchase credits to continue using AI features.`,
+                [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                        text: 'Buy Credits',
+                        onPress: () => navigation.navigate('Billing')
+                    },
+                ]
+            );
+        }
     };
 
     /**

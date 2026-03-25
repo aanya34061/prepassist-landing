@@ -18,9 +18,9 @@ export const SITE_CONFIG = {
 
 export const AI_MODELS = {
     // Gemini Models (Google) - Fastest for our use case
-    GEMINI_FLASH: 'google/gemini-3-flash-preview',
-    GEMINI_FLASH_LATEST: 'google/gemini-3-flash-preview',
-    GEMINI_PRO: 'google/gemini-3-flash-preview',
+    GEMINI_FLASH: 'google/gemini-2.5-flash',
+    GEMINI_FLASH_LATEST: 'google/gemini-2.5-flash',
+    GEMINI_PRO: 'google/gemini-2.5-flash',
 
     // Claude Models (Anthropic) - Best for analysis and PDF parsing
     CLAUDE_SONNET: 'anthropic/claude-sonnet-4.5',
@@ -36,11 +36,11 @@ export const AI_MODELS = {
 
 // Current active models for each task
 export const ACTIVE_MODELS = {
-    // PDF Text Extraction - Use Claude for superior PDF understanding
-    PDF_EXTRACTION: AI_MODELS.CLAUDE_SONNET,
+    // PDF Text Extraction - Gemini for native PDF parsing
+    PDF_EXTRACTION: AI_MODELS.GEMINI_FLASH,
 
-    // MCQ Generation - Use Claude for better quality and format alignment
-    MCQ_GENERATION: AI_MODELS.CLAUDE_SONNET,
+    // MCQ Generation - Gemini for fast, reliable generation
+    MCQ_GENERATION: AI_MODELS.GEMINI_FLASH,
 
     // Essay Evaluation - Pro for quality
     ESSAY_EVALUATION: AI_MODELS.GEMINI_PRO,

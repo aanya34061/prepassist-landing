@@ -186,14 +186,23 @@ export const WebClipperScreen: React.FC<WebClipperScreenProps> = ({ navigation, 
                 syncNoteToFirebase(user.id, savedNote);
             }
 
-            Alert.alert(
-                '✅ Note Saved!',
-                `${scrapedContent.contentBlocks.length} content blocks extracted and saved.`,
-                [{ text: 'OK', onPress: () => navigation.goBack() }]
-            );
+            if (Platform.OS === 'web') {
+                window.alert(`Note Saved! ${scrapedContent.contentBlocks.length} content blocks extracted and saved.`);
+                navigation.goBack();
+            } else {
+                Alert.alert(
+                    '✅ Note Saved!',
+                    `${scrapedContent.contentBlocks.length} content blocks extracted and saved.`,
+                    [{ text: 'OK', onPress: () => navigation.goBack() }]
+                );
+            }
         } catch (err) {
             console.error('Save error:', err);
-            Alert.alert('Error', 'Failed to save the note');
+            if (Platform.OS === 'web') {
+                window.alert('Failed to save the note');
+            } else {
+                Alert.alert('Error', 'Failed to save the note');
+            }
         } finally {
             setIsSaving(false);
         }

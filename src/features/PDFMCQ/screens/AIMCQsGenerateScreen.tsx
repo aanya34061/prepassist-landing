@@ -46,7 +46,7 @@ import { AIDisclaimer } from '../../../components/AIDisclaimer';
 
 // ===================== CONFIGURATION =====================
 const API_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const MODEL = 'google/gemini-3-flash-preview';
+const MODEL = 'google/gemini-2.5-flash';
 
 // ===================== TYPES =====================
 interface MCQ {
@@ -469,7 +469,7 @@ export default function AIMCQsGenerateScreen() {
             >
                 <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1.5, backgroundColor: 'rgba(255,255,255,0.28)' }} />
                 <View style={{ position: 'absolute', width: 150, height: 150, borderRadius: 75, backgroundColor: 'rgba(255,255,255,0.055)', top: -50, right: -40 }} />
-                <TouchableOpacity style={[styles.backBtn, { backgroundColor: 'rgba(255,255,255,0.18)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.28)', width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' }]} onPress={() => navigation.goBack()}>
+                <TouchableOpacity style={[styles.backBtn, { backgroundColor: 'rgba(255,255,255,0.18)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.28)', width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' }]} onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.navigate('NewHome' as never)}>
                     <Ionicons name="arrow-back" size={20} color="#FFF" />
                 </TouchableOpacity>
                 <View style={{ flex: 1, marginLeft: 12 }}>

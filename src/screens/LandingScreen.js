@@ -13,653 +13,711 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
+const isDesktop = isWeb && width > 768;
+const isTablet = isWeb && width > 600;
 
-// Enhanced Sparkle Component with Glow
-const Sparkle = ({ delay, left, top, size = 4, color = '#2563EB' }) => {
-  const opacity = useRef(new Animated.Value(0)).current;
-  const scale = useRef(new Animated.Value(0)).current;
+// ─── PrepAssist Logo ───────────────────────────────────────────
+const PrepAssistLogo = ({ small }) => (
+  <View style={styles.logoRow}>
+    <View style={[styles.logoIcon, small && { width: 24, height: 24 }]}>
+      <View style={[styles.logoArrowOrange, small && { borderLeftWidth: 5, borderRightWidth: 5, borderBottomWidth: 14, left: 1, top: 2 }]} />
+      <View style={[styles.logoArrowBlue, small && { borderLeftWidth: 5, borderRightWidth: 5, borderBottomWidth: 14, right: 1, top: 2 }]} />
+    </View>
+    <Text style={[styles.logoText, small && { fontSize: 14 }]}>
+      Prep<Text style={styles.logoTextLight}>Assist</Text>
+    </Text>
+  </View>
+);
+
+// ─── Animated Counter ──────────────────────────────────────────
+const AnimatedCounter = ({ end, suffix = '', duration = 2000 }) => {
+  const [count, setCount] = useState(0);
 
   useEffect(() => {
-    const animate = () => {
-      Animated.sequence([
-        Animated.delay(delay),
-        Animated.parallel([
-          Animated.timing(opacity, { toValue: 1, duration: 300, useNativeDriver: true }),
-          Animated.spring(scale, { toValue: 1, friction: 3, useNativeDriver: true }),
-        ]),
-        Animated.delay(600),
-        Animated.parallel([
-          Animated.timing(opacity, { toValue: 0, duration: 400, useNativeDriver: true }),
-          Animated.timing(scale, { toValue: 0, duration: 300, useNativeDriver: true }),
-        ]),
-      ]).start(() => animate());
+    let start = 0;
+    const startTime = Date.now();
+    const tick = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      setCount(Math.floor(progress * end));
+      if (progress < 1) requestAnimationFrame(tick);
     };
-    animate();
-  }, []);
+    requestAnimationFrame(tick);
+  }, [end, duration]);
 
   return (
-    <Animated.View
-      style={[
-        styles.sparkle,
-        {
-          left: `${left}%`,
-          top: `${top}%`,
-          width: size,
-          height: size,
-          backgroundColor: color,
-          opacity,
-          transform: [{ scale }],
-        },
-      ]}
-    />
+    <Text style={styles.statNumber}>
+      {count.toLocaleString()}{suffix}
+    </Text>
   );
 };
 
-// Sparkles Strip (appears below phone)
-const SparklesStrip = () => {
-  const sparkles = [];
-  const colors = ['#2563EB', '#06B6D4', '#2A7DEB', '#EC4899'];
-
-  for (let i = 0; i < 40; i++) {
-    sparkles.push({
-      delay: Math.random() * 3000,
-      left: Math.random() * 100,
-      top: Math.random() * 100,
-      size: 2 + Math.random() * 3,
-      color: colors[Math.floor(Math.random() * colors.length)],
-    });
-  }
+// ─── Feature Card ──────────────────────────────────────────────
+const FeatureCard = ({ icon, title, description, iconBg }) => {
+  const bgColor = iconBg === 'orange' ? 'rgba(245,166,35,0.1)' : iconBg === 'green' ? 'rgba(16,185,129,0.1)' : 'rgba(33,150,243,0.1)';
+  const iconColor = iconBg === 'orange' ? '#F5A623' : iconBg === 'green' ? '#10B981' : '#2196F3';
 
   return (
-    <View style={styles.sparklesStrip}>
-      {/* Gradient Lines */}
-      <View style={styles.gradientLineContainer}>
-        <View style={[styles.gradientLine, styles.gradientLine1]} />
-        <View style={[styles.gradientLine, styles.gradientLine2]} />
+    <View style={styles.featureCard}>
+      <View style={[styles.featureIconBox, { backgroundColor: bgColor }]}>
+        <Ionicons name={icon} size={20} color={iconColor} />
       </View>
-
-      {/* Sparkles */}
-      {sparkles.map((s, i) => (
-        <Sparkle key={i} {...s} />
-      ))}
-
-      {/* Radial Fade */}
-      <View style={styles.radialFade} />
+      <Text style={styles.featureTitle}>{title}</Text>
+      <Text style={styles.featureDesc}>{description}</Text>
     </View>
   );
 };
 
-// Animated Grid Background
-const AnimatedGrid = () => {
-  const pulse = useRef(new Animated.Value(0)).current;
+// ─── Testimonial Card ──────────────────────────────────────────
+const TestimonialCard = ({ name, role, content }) => (
+  <View style={styles.testimonialCard}>
+    <View style={styles.starsRow}>
+      {[1, 2, 3, 4, 5].map(i => (
+        <Ionicons key={i} name="star" size={14} color="#FACC15" />
+      ))}
+    </View>
+    <Text style={styles.testimonialContent}>"{content}"</Text>
+    <View style={styles.testimonialAuthor}>
+      <View style={styles.testimonialAvatar}>
+        <Text style={styles.testimonialInitials}>
+          {name.split(' ').map(n => n[0]).join('')}
+        </Text>
+      </View>
+      <View>
+        <Text style={styles.testimonialName}>{name}</Text>
+        <Text style={styles.testimonialRole}>{role}</Text>
+      </View>
+    </View>
+  </View>
+);
+
+// ─── Phone Mockup ──────────────────────────────────────────────
+const PhoneMockup = () => {
+  const floatAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
-        Animated.timing(pulse, { toValue: 1, duration: 3000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 0, duration: 3000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(floatAnim, { toValue: -15, duration: 3000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(floatAnim, { toValue: 0, duration: 3000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
       ])
     ).start();
   }, []);
 
-  const glowOpacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.02, 0.06] });
-
   return (
-    <View style={styles.gridContainer}>
-      <View style={styles.gridLines}>
-        {[...Array(12)].map((_, i) => (
-          <View key={`v${i}`} style={[styles.gridLineVertical, { left: `${(i + 1) * 8}%` }]} />
-        ))}
-        {[...Array(8)].map((_, i) => (
-          <View key={`h${i}`} style={[styles.gridLineHorizontal, { top: `${(i + 1) * 12}%` }]} />
-        ))}
-      </View>
-      <Animated.View style={[styles.glowSpot, styles.glowSpot1, { opacity: glowOpacity }]} />
-      <Animated.View style={[styles.glowSpot, styles.glowSpot2, { opacity: glowOpacity }]} />
-    </View>
-  );
-};
+    <Animated.View style={[styles.phoneContainer, { transform: [{ translateY: floatAnim }] }]}>
+      <View style={styles.phoneMockup}>
+        <View style={styles.phoneScreen}>
+          {/* Dynamic Island */}
+          <View style={styles.dynamicIsland}>
+            <View style={styles.dynamicIslandPill} />
+          </View>
 
-// Animated Avatar Component Removed
+          {/* App Header */}
+          <View style={styles.phoneHeader}>
+            <Ionicons name="chevron-back" size={14} color="#94A3B8" />
+            <Text style={styles.phoneSubject}>Modern History</Text>
+            <Text style={styles.phoneBadgeText}>12/20</Text>
+          </View>
 
-// New Modern Section Component
-const ModernSection = ({ title, subtitle, icon, align = 'left', isDark = false }) => (
-  <View style={[styles.modernSection, isDark && styles.modernSectionDark, align === 'right' && styles.modernSectionRight]}>
-    <View style={styles.modernSectionContent}>
-      <View style={[styles.modernIconBox, isDark ? styles.modernIconBoxDark : styles.modernIconBoxLight]}>
-        <Ionicons name={icon} size={24} color={isDark ? '#60A5FA' : '#2563EB'} />
-      </View>
-      <Text style={[styles.modernTitle, isDark && styles.textWhite]}>{title}</Text>
-      <Text style={[styles.modernSubtitle, isDark && styles.textGray]}>{subtitle}</Text>
-    </View>
-    <View style={[styles.modernVisual, align === 'right' && styles.modernVisualLeft]}>
-      {/* Abstract visual representation */}
-      <View style={[styles.visualCard, isDark ? styles.visualCardDark : styles.visualCardLight]}>
-        <View style={styles.visualLine} />
-        <View style={[styles.visualLine, { width: '60%' }]} />
-        <View style={[styles.visualLine, { width: '80%' }]} />
-        <View style={[styles.visualCircle]} />
-      </View>
-    </View>
-  </View>
-);
+          {/* Question */}
+          <View style={styles.phoneQuestion}>
+            <Text style={styles.phoneQLabel}>QUESTION 13</Text>
+            <Text style={styles.phoneQText}>Which of the following introduced the principle of communal representation in India?</Text>
+          </View>
 
-// Phone Mockup Component
-const PhoneMockup = () => {
-  return (
-    <View style={styles.phoneMockup}>
-      <View style={styles.phoneScreen}>
-        <View style={styles.dynamicIsland}>
-          <View style={styles.dynamicIslandPill} />
-        </View>
-        <View style={styles.quizContent}>
-          <View style={styles.quizHeader}>
-            <Ionicons name="chevron-back" size={12} color="#94A3B8" />
-            <Text style={styles.quizSubject}>Modern History</Text>
-            <View style={styles.quizBadge}>
-              <Text style={styles.quizBadgeText}>12/20</Text>
+          {/* Options */}
+          <View style={styles.phoneOptions}>
+            <View style={styles.phoneOption}>
+              <View style={styles.phoneOptBadge}>
+                <Text style={styles.phoneOptBadgeText}>A</Text>
+              </View>
+              <Text style={styles.phoneOptText}>Indian Councils Act, 1892</Text>
+            </View>
+            <View style={[styles.phoneOption, styles.phoneOptionCorrect]}>
+              <Ionicons name="checkmark-circle" size={16} color="#22C55E" />
+              <Text style={[styles.phoneOptText, { color: '#065F46', fontWeight: '600' }]}>Indian Councils Act, 1909</Text>
+            </View>
+            <View style={styles.phoneOption}>
+              <View style={styles.phoneOptBadge}>
+                <Text style={styles.phoneOptBadgeText}>C</Text>
+              </View>
+              <Text style={styles.phoneOptText}>Government of India Act, 1919</Text>
             </View>
           </View>
-          <View style={styles.questionCard}>
-            <Text style={styles.questionLabel}>Q 13</Text>
-            <Text style={styles.questionText}>Which act introduced communal representation?</Text>
-          </View>
-          <View style={styles.optionsContainer}>
-            {[
-              { id: 'A', text: 'Indian Councils Act, 1892', correct: false },
-              { id: 'B', text: 'Indian Councils Act, 1909', correct: true },
-              { id: 'C', text: 'Govt. of India Act, 1919', correct: false },
-            ].map((opt, i) => (
-              <View key={i} style={[styles.optionItem, opt.correct && styles.optionItemCorrect]}>
-                <View style={[styles.optionBadge, opt.correct && styles.optionBadgeCorrect]}>
-                  {opt.correct ? <Ionicons name="checkmark" size={8} color="#FFF" /> : <Text style={styles.optionBadgeText}>{opt.id}</Text>}
-                </View>
-                <Text style={[styles.optionText, opt.correct && styles.optionTextCorrect]}>{opt.text}</Text>
-              </View>
-            ))}
+
+          {/* Next Button */}
+          <View style={styles.phoneNextBtn}>
+            <Text style={styles.phoneNextBtnText}>Next Question</Text>
           </View>
         </View>
       </View>
-    </View>
+
+      {/* Floating Notifications */}
+      <View style={[styles.notifPopup, { top: 60, right: -20 }]}>
+        <View style={[styles.notifIcon, { backgroundColor: '#FFF7ED' }]}>
+          <Ionicons name="trophy" size={14} color="#F97316" />
+        </View>
+        <View>
+          <Text style={styles.notifTitle}>Streak Maintained!</Text>
+          <Text style={styles.notifSub}>12 days in a row</Text>
+        </View>
+      </View>
+
+      <View style={[styles.notifPopup, { bottom: 100, left: -20 }]}>
+        <View style={[styles.notifIcon, { backgroundColor: '#F0FDF4' }]}>
+          <Ionicons name="checkmark-circle" size={14} color="#22C55E" />
+        </View>
+        <View>
+          <Text style={styles.notifTitle}>AI Analysis Ready</Text>
+          <Text style={styles.notifSub}>Evaluation complete</Text>
+        </View>
+      </View>
+    </Animated.View>
   );
 };
 
-// Feature Card
-const FeatureCard = ({ icon, iconBg, title, description }) => (
-  <View style={styles.featureCard}>
-    <View style={[styles.featureIcon, { backgroundColor: iconBg }]}>
-      <Ionicons name={icon} size={22} color="#2563EB" />
-    </View>
-    <Text style={styles.featureTitle}>{title}</Text>
-    <Text style={styles.featureDescription}>{description}</Text>
+// ─── Grid Background ───────────────────────────────────────────
+const GridBackground = () => (
+  <View style={styles.gridBg} pointerEvents="none">
+    {[...Array(10)].map((_, i) => (
+      <View key={`v${i}`} style={[styles.gridLineV, { left: `${(i + 1) * 9}%` }]} />
+    ))}
+    {[...Array(6)].map((_, i) => (
+      <View key={`h${i}`} style={[styles.gridLineH, { top: `${(i + 1) * 14}%` }]} />
+    ))}
   </View>
 );
 
-// Pricing Card
-const PricingCard = ({ plan, price, period, features, popular, onPress }) => (
-  <View style={[styles.pricingCard, popular && styles.pricingCardPopular]}>
-    {popular && (
-      <View style={styles.popularBadge}>
-        <Text style={styles.popularBadgeText}>MOST POPULAR</Text>
-      </View>
-    )}
-    <Text style={styles.pricingPlanName}>{plan}</Text>
-    <View style={styles.pricingPriceRow}>
-      <Text style={styles.pricingCurrency}>₹</Text>
-      <Text style={styles.pricingPrice}>{price}</Text>
-      <Text style={styles.pricingPeriod}>/{period}</Text>
-    </View>
-    <View style={styles.pricingFeatures}>
-      {features.map((feature, i) => (
-        <View key={i} style={styles.pricingFeatureRow}>
-          <Ionicons name="checkmark-circle" size={18} color="#10B981" />
-          <Text style={styles.pricingFeatureText}>{feature}</Text>
-        </View>
-      ))}
-    </View>
-    <TouchableOpacity style={[styles.pricingButton, popular && styles.pricingButtonPopular]} onPress={onPress}>
-      <Text style={[styles.pricingButtonText, popular && styles.pricingButtonTextPopular]}>Get Started</Text>
-      <Ionicons name="arrow-forward" size={16} color={popular ? '#FFF' : '#0F172A'} />
-    </TouchableOpacity>
-  </View>
-);
-
+// ═══════════════════════════════════════════════════════════════
+// MAIN COMPONENT
+// ═══════════════════════════════════════════════════════════════
 export default function LandingScreen({ navigation }) {
+  const [menuOpen, setMenuOpen] = useState(false);
   const scrollRef = useRef(null);
-  const [pricingY, setPricingY] = useState(0);
+  const [featuresY, setFeaturesY] = useState(0);
+  const [testimonialsY, setTestimonialsY] = useState(0);
 
   const handleGetStarted = () => navigation.navigate('Login');
 
-  const scrollToPricing = () => {
-    scrollRef.current?.scrollTo({ y: pricingY, animated: true });
-  };
+  const features = [
+    { icon: 'hardware-chip-outline', title: 'Adaptive Question Engine', description: 'Our AI parses The Hindu, Indian Express, and NCERTs to generate exam-ready MCQs. It adapts difficulty based on your performance history.', iconBg: 'blue' },
+    { icon: 'document-text-outline', title: 'Mains Evaluator', description: 'Get feedback on structure, vocabulary, and relevance in seconds. We grade against topper copies.', iconBg: 'orange' },
+    { icon: 'flash-outline', title: 'Smart News Feed', description: 'Auto-tagged current affairs filtered specifically for syllabus relevance.', iconBg: 'blue' },
+    { icon: 'map-outline', title: 'Dynamic Roadmap', description: "Missed a day? Our scheduler automatically adjusts your plan to keep you on track.", iconBg: 'orange' },
+    { icon: 'stats-chart-outline', title: 'Progress Analytics', description: 'Track performance with beautiful dashboards, identify weak areas and optimize your study time.', iconBg: 'green' },
+    { icon: 'bulb-outline', title: 'AI Study Assistant', description: 'Get instant explanations, summaries, and personalized study recommendations.', iconBg: 'blue' },
+  ];
+
+  const testimonials = [
+    { name: 'Priya Sharma', role: 'UPSC CSE 2024 - AIR 47', content: 'This platform transformed my preparation. The AI-generated MCQs helped me identify weak areas I never knew existed.' },
+    { name: 'Rahul Krishnan', role: 'UPSC CSE 2024 - AIR 156', content: 'The roadmap feature is a game-changer. I could finally see my entire preparation journey mapped out clearly.' },
+    { name: 'Ananya Gupta', role: 'UPSC CSE 2024 - AIR 289', content: 'Daily current affairs with smart summaries saved me hours every day. Absolutely essential for serious aspirants.' },
+  ];
+
+  const stats = [
+    { value: 15000, suffix: '+', label: 'Active Aspirants' },
+    { value: 500, suffix: '+', label: 'Success Stories' },
+    { value: 98, suffix: '%', label: 'Satisfaction Rate' },
+    { value: 2, suffix: 'M+', label: 'MCQs Generated' },
+  ];
 
   return (
     <View style={styles.container}>
-      <SafeAreaView style={styles.safeArea} edges={['top']}>
-        {/* Navbar with Links */}
-        <View style={styles.navbar}>
-          <View style={styles.navbarInner}>
-            <View style={styles.logoContainer}>
-              {/* PrepAssist Logo SVG */}
-              <View style={styles.logoIcon}>
-                <View style={styles.logoArrowOrange} />
-                <View style={styles.logoArrowBlue} />
-              </View>
-              <Text style={styles.logoText}>Prep<Text style={styles.logoTextLight}>Assist</Text></Text>
-            </View>
+      <GridBackground />
 
-            {/* Nav Links */}
-            {isWeb && (
+      {/* ── Navbar ─────────────────────────────────── */}
+      <View style={styles.navbarOuter}>
+        <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
+          <View style={styles.navbar}>
+            <PrepAssistLogo />
+
+            {/* Desktop Links */}
+            {isDesktop && (
               <View style={styles.navLinks}>
+                <TouchableOpacity onPress={() => scrollRef.current?.scrollTo({ y: featuresY, animated: true })}>
+                  <Text style={styles.navLink}>FEATURES</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => scrollRef.current?.scrollTo({ y: testimonialsY, animated: true })}>
+                  <Text style={styles.navLink}>TESTIMONIALS</Text>
+                </TouchableOpacity>
                 <TouchableOpacity onPress={() => navigation.navigate('Pricing')}>
-                  <Text style={styles.navLink}>Pricing</Text>
+                  <Text style={styles.navLink}>PRICING</Text>
                 </TouchableOpacity>
               </View>
             )}
 
             <View style={styles.navButtons}>
-              <TouchableOpacity style={styles.signInLink} onPress={handleGetStarted}>
-                <Text style={styles.signInLinkText}>Sign In</Text>
+              {isDesktop && (
+                <TouchableOpacity onPress={handleGetStarted}>
+                  <Text style={styles.navLoginText}>Log in</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity style={styles.navSignUpBtn} onPress={handleGetStarted}>
+                <Text style={styles.navSignUpText}>Sign Up</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.signUpButton} onPress={handleGetStarted}>
-                <Text style={styles.signUpButtonText}>Sign Up</Text>
+              {!isDesktop && (
+                <TouchableOpacity onPress={() => setMenuOpen(!menuOpen)} style={{ marginLeft: 8 }}>
+                  <Ionicons name={menuOpen ? 'close' : 'menu'} size={24} color="#1A1F36" />
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+
+          {/* Mobile Menu */}
+          {menuOpen && !isDesktop && (
+            <View style={styles.mobileMenu}>
+              <TouchableOpacity onPress={() => { setMenuOpen(false); scrollRef.current?.scrollTo({ y: featuresY, animated: true }); }}>
+                <Text style={styles.mobileMenuLink}>Features</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => { setMenuOpen(false); scrollRef.current?.scrollTo({ y: testimonialsY, animated: true }); }}>
+                <Text style={styles.mobileMenuLink}>Testimonials</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => { setMenuOpen(false); navigation.navigate('Pricing'); }}>
+                <Text style={styles.mobileMenuLink}>Pricing</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.mobileSignUpBtn} onPress={() => { setMenuOpen(false); handleGetStarted(); }}>
+                <Text style={styles.mobileSignUpText}>Sign Up</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => { setMenuOpen(false); handleGetStarted(); }}>
+                <Text style={[styles.mobileMenuLink, { textAlign: 'center', color: '#94A3B8' }]}>Log in</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </SafeAreaView>
+      </View>
+
+      {/* ── Scrollable Content ─────────────────────── */}
+      <ScrollView
+        ref={scrollRef}
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* ── Hero Section ─────────────────────────── */}
+        <View style={styles.heroSection}>
+          <View style={[styles.heroRow, isDesktop && { flexDirection: 'row' }]}>
+            {/* Left Content */}
+            <View style={[styles.heroContent, isDesktop && { flex: 1, maxWidth: 460 }]}>
+              {/* Badge */}
+              <View style={styles.heroBadge}>
+                <View style={styles.heroBadgeDot} />
+                <Text style={styles.heroBadgeText}>NEW: MAINS AI EVALUATOR 2.0</Text>
+              </View>
+
+              {/* Headline */}
+              <Text style={styles.heroTitle}>
+                Crack UPSC Smarter{'\n'}
+                <Text style={styles.heroTitleBlue}>With AI Powered Learning.</Text>
+              </Text>
+
+              {/* Subtitle */}
+              <Text style={styles.heroSubtitle}>
+                The only AI-powered operating system for serious aspirants. Generate quizzes from news, get instant answer feedback, and visualize your progress.
+              </Text>
+
+              {/* CTA Buttons */}
+              <View style={styles.heroButtons}>
+                <TouchableOpacity style={styles.btnPrimary} onPress={handleGetStarted}>
+                  <Text style={styles.btnPrimaryText}>Start Learning Free</Text>
+                  <Ionicons name="arrow-forward" size={16} color="#FFF" />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.btnSecondary} onPress={() => navigation.navigate('Pricing')}>
+                  <Ionicons name="play" size={14} color="#1A1F36" />
+                  <Text style={styles.btnSecondaryText}>Watch Demo</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Trust Indicators */}
+              <View style={styles.trustRow}>
+                <View style={styles.avatarStack}>
+                  {['A', 'B', 'C', 'D'].map((letter, i) => (
+                    <View key={i} style={[styles.avatarCircle, { marginLeft: i === 0 ? 0 : -8, zIndex: 4 - i }]}>
+                      <Text style={styles.avatarEmoji}>
+                        {['👩‍🎓', '👨‍💼', '👩‍💻', '👨‍🎓'][i]}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+                <View>
+                  <View style={styles.starsRow}>
+                    {[1, 2, 3, 4, 5].map(i => (
+                      <Ionicons key={i} name="star" size={12} color="#FACC15" />
+                    ))}
+                  </View>
+                  <Text style={styles.trustText}>
+                    <Text style={styles.trustBold}>15,000+</Text> aspirants trusting us
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Right - Phone Mockup */}
+            {isDesktop && (
+              <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                <PhoneMockup />
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* ── Stats Section ────────────────────────── */}
+        <View style={styles.statsSection}>
+          <View style={[styles.statsGrid, isTablet && { flexDirection: 'row' }]}>
+            {stats.map((stat, i) => (
+              <View key={i} style={styles.statItem}>
+                <AnimatedCounter end={stat.value} suffix={stat.suffix} />
+                <Text style={styles.statLabel}>{stat.label}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {/* ── Features Section ─────────────────────── */}
+        <View
+          style={styles.featuresSection}
+          onLayout={(e) => setFeaturesY(e.nativeEvent.layout.y)}
+        >
+          <Text style={styles.sectionTitle}>
+            A complete operating system{'\n'}
+            <Text style={styles.sectionTitleLight}>for your preparation.</Text>
+          </Text>
+          <Text style={styles.sectionSubtitle}>
+            We combined the best study tools into one cohesive platform. No more switching between apps.
+          </Text>
+
+          <View style={[styles.featuresGrid, isTablet && { flexDirection: 'row', flexWrap: 'wrap' }]}>
+            {features.map((f, i) => (
+              <View key={i} style={[styles.featureCardWrap, isTablet && { width: isDesktop ? '31%' : '48%' }]}>
+                <FeatureCard {...f} />
+              </View>
+            ))}
+          </View>
+
+          <TouchableOpacity style={styles.viewAllLink} onPress={() => navigation.navigate('Pricing')}>
+            <Text style={styles.viewAllText}>View all features</Text>
+            <Ionicons name="arrow-forward" size={14} color="#2196F3" />
+          </TouchableOpacity>
+        </View>
+
+        {/* ── Testimonials Section ─────────────────── */}
+        <View
+          style={styles.testimonialsSection}
+          onLayout={(e) => setTestimonialsY(e.nativeEvent.layout.y)}
+        >
+          <Text style={[styles.sectionTitle, { textAlign: 'center' }]}>
+            Loved by India's{'\n'}
+            <Text style={styles.heroTitleBlue}>top achievers</Text>
+          </Text>
+          <Text style={[styles.sectionSubtitle, { textAlign: 'center', alignSelf: 'center' }]}>
+            Join thousands of aspirants who cleared UPSC with our platform.
+          </Text>
+
+          <View style={[styles.testimonialsGrid, isTablet && { flexDirection: 'row' }]}>
+            {testimonials.map((t, i) => (
+              <View key={i} style={[styles.testimonialWrap, isTablet && { flex: 1 }]}>
+                <TestimonialCard {...t} />
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {/* ── CTA Section ──────────────────────────── */}
+        <View style={styles.ctaOuter}>
+          <View style={styles.ctaCard}>
+            <Text style={styles.ctaTitle}>Ready to streamline your prep?</Text>
+            <Text style={styles.ctaSubtitle}>
+              Join thousands of serious aspirants using AI to clear the toughest exam in the world.
+            </Text>
+            <View style={styles.ctaButtons}>
+              <TouchableOpacity style={styles.ctaPrimaryBtn} onPress={handleGetStarted}>
+                <Text style={styles.ctaPrimaryText}>Get Started Free</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.ctaSecondaryBtn} onPress={() => navigation.navigate('Pricing')}>
+                <Text style={styles.ctaSecondaryText}>View Pricing</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
 
-        <ScrollView
-          ref={scrollRef}
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Hero Section */}
-          <View style={styles.heroSection}>
-            <AnimatedGrid />
-
-            <View style={styles.heroRow}>
-              {/* Text Content */}
-              <View style={styles.heroContent}>
-                <View style={styles.heroBadge}>
-                  <View style={styles.heroBadgeDot} />
-                  <Text style={styles.heroBadgeText}>AI-Powered UPSC Preparation</Text>
-                </View>
-
-                <Text style={styles.heroTitle}>
-                  Crack UPSC Smarter{'\n'}
-                  <Text style={styles.heroTitleGradient}>With AI Powered Learning</Text>
-                </Text>
-
-                <Text style={styles.heroSubtitle}>
-                  Personalized practice, writing evaluations, and daily updates built for serious learners.
-                </Text>
-
-                <View style={styles.heroFeatures}>
-                  <View style={styles.heroFeatureItem}>
-                    <Ionicons name="checkmark-circle" size={18} color="#10B981" />
-                    <Text style={styles.heroFeatureText}>AI MCQ Generator</Text>
-                  </View>
-                  <View style={styles.heroFeatureItem}>
-                    <Ionicons name="checkmark-circle" size={18} color="#10B981" />
-                    <Text style={styles.heroFeatureText}>Mains Answer Evaluator</Text>
-                  </View>
-                  <View style={styles.heroFeatureItem}>
-                    <Ionicons name="checkmark-circle" size={18} color="#10B981" />
-                    <Text style={styles.heroFeatureText}>Daily Current Affairs</Text>
-                  </View>
-                </View>
-
-                <View style={styles.heroButtons}>
-                  <TouchableOpacity style={styles.primaryButton} onPress={handleGetStarted}>
-                    <Text style={styles.primaryButtonText}>Start Learning Free</Text>
-                    <Ionicons name="arrow-forward" size={16} color="#FFF" />
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.navigate('Pricing')}>
-                    <Text style={styles.secondaryButtonText}>View Pricing</Text>
-                  </TouchableOpacity>
-                </View>
-
-                {/* Social Proof */}
-                <View style={styles.socialProof}>
-                  <View>
-                    <View style={styles.starsRow}>
-                      {[1, 2, 3, 4, 5].map((i) => (
-                        <Ionicons key={i} name="star" size={12} color="#FACC15" />
-                      ))}
-                    </View>
-                    <Text style={styles.socialProofText}>
-                      <Text style={styles.socialProofBold}>15,000+</Text> aspirants trust us
-                    </Text>
-                  </View>
-                </View>
-              </View>
-
-              {/* Phone + Sparkles */}
-              {isWeb && width > 768 && (
-                <View style={styles.mockupWrapper}>
-                  <PhoneMockup />
-                </View>
-              )}
+        {/* ── Footer ───────────────────────────────── */}
+        <View style={styles.footer}>
+          <View style={[styles.footerInner, isDesktop && { flexDirection: 'row' }]}>
+            <PrepAssistLogo small />
+            <Text style={styles.footerCopy}>© 2026 PrepAssist. All rights reserved. Built with ❤️ for aspirants.</Text>
+            <View style={styles.footerLinks}>
+              <Text style={styles.footerLink}>Privacy</Text>
+              <Text style={styles.footerLink}>Terms</Text>
+              <Text style={styles.footerLink}>Contact</Text>
             </View>
           </View>
-
-          {/* Modern Feature Sections */}
-          <View style={styles.modernSectionsContainer}>
-            <ModernSection
-              title="Your Personal Content Engine"
-              subtitle="Don't just read—interact. Upload any study material and instantly generate practice MCQs and concise summaries. Turn passive reading into active retention without the manual effort."
-              icon="document-text-outline"
-              align="left"
-            />
-
-            <ModernSection
-              title="Progress You Can Actually See"
-              subtitle="The UPSC syllabus is vast. We make it navigable. Granularly track your coverage across every subject and micro-topic. No more guessing games about what's left to cover."
-              icon="stats-chart-outline"
-              align="right"
-              isDark={true}
-            />
-
-            <ModernSection
-              title="Feedback That Never Sleeps"
-              subtitle="Writing practice shouldn't wait for a tutor's schedule. Get instant, objective analysis of your Mains answers. Fix structural flaws and content gaps while the ideas are still fresh."
-              icon="create-outline"
-              align="left"
-            />
-          </View>
-
-          {/* Pricing CTA */}
-          <View style={styles.pricingCTA}>
-            <Text style={styles.pricingCTATitle}>Ready to start your UPSC journey?</Text>
-            <Text style={styles.pricingCTASubtitle}>Choose from our affordable plans starting at just ₹399/month</Text>
-            <TouchableOpacity
-              style={styles.pricingCTAButton}
-              onPress={() => navigation.navigate('Pricing')}
-            >
-              <Text style={styles.pricingCTAButtonText}>View Pricing Plans</Text>
-              <Ionicons name="arrow-forward" size={18} color="#FFF" />
-            </TouchableOpacity>
-          </View>
-
-          {/* CTA */}
-          <View style={styles.ctaSection}>
-            <View style={styles.ctaCard}>
-              <Text style={styles.ctaTitle}>Start your journey today</Text>
-              <TouchableOpacity style={styles.ctaPrimaryButton} onPress={handleGetStarted}>
-                <Text style={styles.ctaPrimaryButtonText}>Create Free Account</Text>
-                <Ionicons name="arrow-forward" size={16} color="#0F172A" />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Footer */}
-          <View style={styles.footer}>
-            <View style={styles.footerLogoContainer}>
-              <View style={styles.logoIconSmall}>
-                <View style={styles.logoArrowOrangeSmall} />
-                <View style={styles.logoArrowBlueSmall} />
-              </View>
-              <Text style={styles.footerLogo}>Prep<Text style={styles.logoTextLight}>Assist</Text></Text>
-            </View>
-            <Text style={styles.footerCopyright}>© 2026 PrepAssist. All rights reserved. Built with ❤️ for aspirants.</Text>
-          </View>
-        </ScrollView>
-      </SafeAreaView>
+        </View>
+      </ScrollView>
     </View>
   );
 }
 
+// ═══════════════════════════════════════════════════════════════
+// STYLES
+// ═══════════════════════════════════════════════════════════════
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFFFFF' },
-  safeArea: { flex: 1 },
 
-  // Sparkles Strip
-  sparklesStrip: {
-    width: '100%',
-    height: 120,
-    backgroundColor: '#0F172A',
-    marginTop: 20,
-    borderRadius: 16,
-    overflow: 'hidden',
-    position: 'relative',
+  // Grid background
+  gridBg: {
+    position: 'absolute', top: 0, left: 0, right: 0, height: '60%',
+    overflow: 'hidden', zIndex: 0,
   },
-  sparkle: {
-    position: 'absolute',
-    borderRadius: 20,
-    ...Platform.select({
-      web: { boxShadow: '0 0 8px 2px currentColor' },
-    }),
-  },
-  gradientLineContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 3,
-    alignItems: 'center',
-  },
-  gradientLine: {
-    position: 'absolute',
-    height: 2,
-    borderRadius: 1,
-  },
-  gradientLine1: {
-    width: '60%',
-    backgroundColor: '#2A7DEB',
-    opacity: 0.8,
-  },
-  gradientLine2: {
-    width: '30%',
-    backgroundColor: '#06B6D4',
-    opacity: 0.6,
-    top: 2,
-  },
-  radialFade: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 40,
-    backgroundColor: '#0F172A',
-  },
+  gridLineV: { position: 'absolute', top: 0, bottom: 0, width: 1, backgroundColor: 'rgba(0,0,0,0.03)' },
+  gridLineH: { position: 'absolute', left: 0, right: 0, height: 1, backgroundColor: 'rgba(0,0,0,0.03)' },
 
-  // Grid
-  gridContainer: { position: 'absolute', top: 0, left: 0, right: 0, height: height * 0.6, overflow: 'hidden', zIndex: 0 },
-  gridLines: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
-  gridLineVertical: { position: 'absolute', top: 0, bottom: 0, width: 1, backgroundColor: 'rgba(37, 99, 235, 0.12)' },
-  gridLineHorizontal: { position: 'absolute', left: 0, right: 0, height: 1, backgroundColor: 'rgba(37, 99, 235, 0.12)' },
-  glowSpot: { position: 'absolute', borderRadius: 500, backgroundColor: '#2563EB' },
-  glowSpot1: { width: 400, height: 400, top: -100, right: -100 },
-  glowSpot2: { width: 300, height: 300, bottom: 50, left: -100 },
-
-  // Avatars
-  animatedAvatar: { width: 34, height: 34, borderRadius: 17, borderWidth: 2, borderColor: '#FFF', alignItems: 'center', justifyContent: 'center' },
-  avatarEmoji: { fontSize: 14 },
-
-  // Navbar
-  navbar: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100, paddingTop: Platform.OS === 'ios' ? 50 : 10, paddingHorizontal: 20 },
-  navbarInner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'rgba(255,255,255,0.95)', paddingVertical: 10, paddingHorizontal: 16, borderRadius: 50, borderWidth: 1, borderColor: '#E5E7EB' },
-  logoContainer: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  logoText: { fontSize: 15, fontWeight: '700', color: '#1A1A1A' },
-  navLinks: { flexDirection: 'row', gap: 24 },
-  navLink: { fontSize: 13, fontWeight: '600', color: '#64748B' },
-  navButtons: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  signInLink: { paddingHorizontal: 12, paddingVertical: 8 },
-  signInLinkText: { fontSize: 12, fontWeight: '600', color: '#64748B' },
-  signUpButton: { backgroundColor: '#0F172A', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 50 },
-  signUpButtonText: { color: '#FFF', fontSize: 12, fontWeight: '700' },
-
-  // Scroll
-  scrollView: { flex: 1 },
-  scrollContent: { paddingTop: Platform.OS === 'ios' ? 100 : 70 },
-
-  // Hero
-  heroSection: { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 40, maxWidth: 1100, alignSelf: 'center', width: '100%', position: 'relative' },
-  heroRow: { flexDirection: isWeb && width > 768 ? 'row' : 'column', alignItems: 'center', gap: 30, zIndex: 10 },
-  heroContent: { flex: 1, maxWidth: 460 },
-  heroBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#EFF6FF', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 50, alignSelf: 'flex-start', borderWidth: 1, borderColor: '#BFDBFE', marginBottom: 20 },
-  heroBadgeDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#10B981', marginRight: 8 },
-  heroBadgeText: { fontSize: 11, fontWeight: '600', color: '#1D4ED8' },
-  heroTitle: { fontSize: isWeb ? 52 : 36, fontWeight: '800', color: '#0F172A', lineHeight: isWeb ? 60 : 44, letterSpacing: -2, marginBottom: 16 },
-  heroTitleGradient: { color: '#3B82F6' },
-  heroSubtitle: { fontSize: 16, color: '#64748B', lineHeight: 26, marginBottom: 24, maxWidth: 480 },
-  heroFeatures: { flexDirection: isWeb ? 'row' : 'column', flexWrap: 'wrap', gap: 12, marginBottom: 28 },
-  heroFeatureItem: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  heroFeatureText: { fontSize: 14, fontWeight: '600', color: '#334155' },
-  heroButtons: { flexDirection: 'row', gap: 12, marginBottom: 28 },
-  primaryButton: { backgroundColor: '#3B82F6', flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 14, paddingHorizontal: 24, borderRadius: 12 },
-  primaryButtonText: { color: '#FFF', fontSize: 15, fontWeight: '700' },
-  secondaryButton: { backgroundColor: '#F1F5F9', paddingVertical: 14, paddingHorizontal: 24, borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0' },
-  secondaryButtonText: { fontSize: 15, fontWeight: '600', color: '#0F172A' },
-  socialProof: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  avatarStack: { flexDirection: 'row' },
-  starsRow: { flexDirection: 'row', gap: 1, marginBottom: 2 },
-  socialProofText: { fontSize: 11, color: '#64748B' },
-  socialProofBold: { fontWeight: '700', color: '#0F172A' },
-
-  // Mockup
-  mockupWrapper: { alignItems: 'center' },
-  phoneMockup: { width: 180, height: 360, backgroundColor: '#000', borderRadius: 28, padding: 5 },
-  phoneScreen: { flex: 1, backgroundColor: '#FFF', borderRadius: 23, overflow: 'hidden' },
-  dynamicIsland: { alignItems: 'center', paddingTop: 4 },
-  dynamicIslandPill: { width: 50, height: 16, backgroundColor: '#000', borderRadius: 8 },
-  quizContent: { flex: 1, paddingTop: 20 },
-  quizHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8, paddingBottom: 6, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-  quizSubject: { fontSize: 8, fontWeight: '700', color: '#0F172A' },
-  quizBadge: { backgroundColor: '#EFF6FF', paddingHorizontal: 4, paddingVertical: 1, borderRadius: 4 },
-  quizBadgeText: { fontSize: 6, fontWeight: '700', color: '#2563EB' },
-  questionCard: { margin: 8, padding: 8, borderRadius: 8, borderWidth: 1, borderColor: '#F1F5F9' },
-  questionLabel: { fontSize: 6, fontWeight: '700', color: '#94A3B8', marginBottom: 2 },
-  questionText: { fontSize: 8, fontWeight: '600', color: '#0F172A', lineHeight: 11 },
-  optionsContainer: { paddingHorizontal: 8, gap: 3 },
-  optionItem: { flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 6, padding: 5 },
-  optionItemCorrect: { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0' },
-  optionBadge: { width: 12, height: 12, borderRadius: 6, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center' },
-  optionBadgeCorrect: { backgroundColor: '#10B981', borderColor: '#10B981' },
-  optionBadgeText: { fontSize: 5, fontWeight: '700', color: '#64748B' },
-  optionText: { fontSize: 7, color: '#475569', flex: 1 },
-  optionTextCorrect: { color: '#065F46', fontWeight: '600' },
-
-  // Features
-  featuresSection: { paddingHorizontal: 24, paddingVertical: 50, maxWidth: 1100, alignSelf: 'center', width: '100%' },
-  featuresTitle: { fontSize: isWeb ? 32 : 26, fontWeight: '800', color: '#0F172A', marginBottom: 32 },
-  featuresTitleLight: { color: '#94A3B8' },
-  featuresGrid: { flexDirection: isWeb && width > 600 ? 'row' : 'column', flexWrap: 'wrap', gap: 14 },
-  featureCard: { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 18, padding: 20, flex: isWeb && width > 600 ? 1 : undefined, minWidth: isWeb && width > 600 ? 220 : undefined, maxWidth: isWeb && width > 600 ? '31%' : undefined },
-  featureIcon: { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
-  featureTitle: { fontSize: 15, fontWeight: '700', color: '#0F172A', marginBottom: 4 },
-  featureDescription: { fontSize: 12, color: '#64748B', lineHeight: 18 },
-
-  // Why Section
-  whySection: { paddingHorizontal: 24, paddingVertical: 60, backgroundColor: '#0F172A' },
-  whyTitle: { fontSize: isWeb ? 32 : 26, fontWeight: '800', color: '#FFF', textAlign: 'center', marginBottom: 40 },
-  whyGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 32 },
-  whyStat: { alignItems: 'center', minWidth: 120 },
-  whyNumber: { fontSize: isWeb ? 48 : 36, fontWeight: '800', color: '#FFF', marginBottom: 4 },
-  whyLabel: { fontSize: 14, color: '#94A3B8', fontWeight: '600' },
-
-  // Pricing CTA
-  pricingCTA: { paddingHorizontal: 24, paddingVertical: 60, backgroundColor: '#F8FAFC', alignItems: 'center' },
-  pricingCTATitle: { fontSize: isWeb ? 32 : 26, fontWeight: '800', color: '#0F172A', textAlign: 'center', marginBottom: 12 },
-  pricingCTASubtitle: { fontSize: 16, color: '#64748B', textAlign: 'center', marginBottom: 32, maxWidth: 500 },
-  pricingCTAButton: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#3B82F6', paddingHorizontal: 32, paddingVertical: 16, borderRadius: 14 },
-  pricingCTAButtonText: { fontSize: 16, fontWeight: '700', color: '#FFF' },
-
-  // CTA
-  ctaSection: { paddingHorizontal: 24, paddingVertical: 50 },
-  ctaCard: { backgroundColor: '#0F172A', borderRadius: 28, padding: 40, alignItems: 'center', maxWidth: 600, alignSelf: 'center', width: '100%' },
-  ctaTitle: { fontSize: isWeb ? 28 : 22, fontWeight: '800', color: '#FFF', textAlign: 'center', marginBottom: 20 },
-  ctaPrimaryButton: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FFF', paddingHorizontal: 28, paddingVertical: 12, borderRadius: 50 },
-  ctaPrimaryButtonText: { color: '#0F172A', fontSize: 13, fontWeight: '700' },
-
-  // Footer
-  footer: { borderTopWidth: 1, borderTopColor: '#E5E7EB', backgroundColor: '#FAFAFA', paddingVertical: 28, alignItems: 'center' },
-  footerLogoContainer: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
-  footerLogo: { fontSize: 14, fontWeight: '700', color: '#0F172A' },
-  footerCopyright: { fontSize: 11, color: '#94A3B8', textAlign: 'center' },
-
-  // PrepAssist Logo Styles
-  logoIcon: { width: 28, height: 28, position: 'relative' },
+  // Logo
+  logoRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  logoIcon: { width: 32, height: 32, position: 'relative' },
   logoArrowOrange: {
-    position: 'absolute',
-    left: 2,
-    top: 4,
-    width: 0,
-    height: 0,
-    borderLeftWidth: 8,
-    borderRightWidth: 8,
-    borderBottomWidth: 20,
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
-    borderBottomColor: '#F5A623',
-    transform: [{ rotate: '180deg' }]
+    position: 'absolute', left: 2, top: 4,
+    width: 0, height: 0,
+    borderLeftWidth: 8, borderRightWidth: 8, borderBottomWidth: 20,
+    borderLeftColor: 'transparent', borderRightColor: 'transparent', borderBottomColor: '#F5A623',
+    transform: [{ rotate: '180deg' }],
   },
   logoArrowBlue: {
-    position: 'absolute',
-    right: 2,
-    top: 4,
-    width: 0,
-    height: 0,
-    borderLeftWidth: 8,
-    borderRightWidth: 8,
-    borderBottomWidth: 20,
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
-    borderBottomColor: '#2196F3',
+    position: 'absolute', right: 2, top: 4,
+    width: 0, height: 0,
+    borderLeftWidth: 8, borderRightWidth: 8, borderBottomWidth: 20,
+    borderLeftColor: 'transparent', borderRightColor: 'transparent', borderBottomColor: '#2196F3',
   },
+  logoText: { fontSize: 18, fontWeight: '700', color: '#1A1A1A' },
   logoTextLight: { fontWeight: '500', color: '#64748B' },
 
-  // Small logo for footer
-  logoIconSmall: { width: 20, height: 20, position: 'relative' },
-  logoArrowOrangeSmall: {
-    position: 'absolute',
-    left: 1,
-    top: 3,
-    width: 0,
-    height: 0,
-    borderLeftWidth: 5,
-    borderRightWidth: 5,
-    borderBottomWidth: 14,
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
-    borderBottomColor: '#F5A623',
-    transform: [{ rotate: '180deg' }]
+  // Navbar
+  navbarOuter: {
+    position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100,
+    paddingHorizontal: 16,
+    paddingTop: Platform.OS === 'ios' ? 6 : 10,
   },
-  logoArrowBlueSmall: {
-    position: 'absolute',
-    right: 1,
-    top: 3,
-    width: 0,
-    height: 0,
-    borderLeftWidth: 5,
-    borderRightWidth: 5,
-    borderBottomWidth: 14,
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
-    borderBottomColor: '#2196F3',
+  navbar: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: 'rgba(255,255,255,0.85)',
+    paddingVertical: 10, paddingHorizontal: 16,
+    borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.5)',
+    ...Platform.select({
+      web: { backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', boxShadow: '0 4px 30px rgba(0,0,0,0.05)' },
+      default: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 16, elevation: 4 },
+    }),
   },
-  // Modern Sections
-  modernSectionsContainer: { paddingVertical: 40, gap: 40 },
-  modernSection: { flexDirection: isWeb && width > 768 ? 'row' : 'column', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, paddingVertical: 60, gap: 40, maxWidth: 1100, alignSelf: 'center', width: '100%', borderRadius: 24 },
-  modernSectionDark: { backgroundColor: '#0F172A' },
-  modernSectionRight: { flexDirection: isWeb && width > 768 ? 'row-reverse' : 'column' },
-  modernSectionContent: { flex: 1, maxWidth: 500 },
-  modernTitle: { fontSize: 32, fontWeight: '800', color: '#0F172A', marginBottom: 16, lineHeight: 40 },
-  modernSubtitle: { fontSize: 16, color: '#475569', lineHeight: 26 },
-  modernIconBox: { width: 48, height: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
-  modernIconBoxLight: { backgroundColor: '#DBEAFE' },
-  modernIconBoxDark: { backgroundColor: 'rgba(255,255,255,0.1)' },
-  textWhite: { color: '#FFF' },
-  textGray: { color: '#94A3B8' },
-  modernVisual: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  modernVisualLeft: { alignItems: 'flex-start' },
-  visualCard: { width: '100%', maxWidth: 400, height: 240, borderRadius: 20, padding: 24, justifyContent: 'center', gap: 16 },
-  visualCardLight: { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0' },
-  visualCardDark: { backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
-  visualLine: { height: 12, backgroundColor: '#E2E8F0', borderRadius: 6, width: '100%' },
-  visualCircle: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#3B82F6', marginTop: 12 },
+  navLinks: { flexDirection: 'row', gap: 28 },
+  navLink: { fontSize: 13, fontWeight: '600', color: '#64748B' },
+  navButtons: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  navLoginText: { fontSize: 13, fontWeight: '600', color: '#64748B' },
+  navSignUpBtn: { backgroundColor: '#2196F3', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12 },
+  navSignUpText: { color: '#FFF', fontSize: 13, fontWeight: '700' },
+
+  // Mobile Menu
+  mobileMenu: {
+    marginTop: 12, backgroundColor: 'rgba(255,255,255,0.92)',
+    borderRadius: 20, padding: 20, gap: 16,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.5)',
+    ...Platform.select({
+      web: { backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' },
+      default: {},
+    }),
+  },
+  mobileMenuLink: { fontSize: 15, color: '#64748B', fontWeight: '500' },
+  mobileSignUpBtn: { backgroundColor: '#2196F3', paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
+  mobileSignUpText: { color: '#FFF', fontSize: 14, fontWeight: '700' },
+
+  // Scroll
+  scroll: { flex: 1, zIndex: 1 },
+  scrollContent: { paddingTop: Platform.OS === 'ios' ? 110 : 90 },
+
+  // Hero
+  heroSection: { paddingHorizontal: 24, paddingTop: 30, paddingBottom: 40, maxWidth: 1100, alignSelf: 'center', width: '100%' },
+  heroRow: { alignItems: 'center', gap: 30 },
+  heroContent: {},
+  heroBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: 'rgba(33,150,243,0.08)',
+    paddingHorizontal: 16, paddingVertical: 8,
+    borderRadius: 100, alignSelf: 'flex-start',
+    borderWidth: 1, borderColor: 'rgba(33,150,243,0.2)',
+    marginBottom: 24,
+  },
+  heroBadgeDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#2196F3' },
+  heroBadgeText: { fontSize: 12, fontWeight: '600', color: '#2196F3' },
+  heroTitle: {
+    fontSize: isWeb ? 52 : 36, fontWeight: '800', color: '#0F172A',
+    lineHeight: isWeb ? 58 : 44, letterSpacing: -1.5, marginBottom: 16,
+  },
+  heroTitleBlue: { color: '#2196F3' },
+  heroSubtitle: { fontSize: 16, color: '#64748B', lineHeight: 26, marginBottom: 28, maxWidth: 480 },
+  heroButtons: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 28 },
+  btnPrimary: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: '#1A1F36', paddingVertical: 14, paddingHorizontal: 28, borderRadius: 12,
+    ...Platform.select({
+      web: { boxShadow: '0 4px 14px rgba(26,31,54,0.25)' },
+      default: { shadowColor: '#1A1F36', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 14, elevation: 4 },
+    }),
+  },
+  btnPrimaryText: { color: '#FFF', fontSize: 15, fontWeight: '700' },
+  btnSecondary: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: 'transparent', paddingVertical: 14, paddingHorizontal: 28,
+    borderRadius: 12, borderWidth: 2, borderColor: '#E2E8F0',
+  },
+  btnSecondaryText: { fontSize: 15, fontWeight: '600', color: '#0F172A' },
+
+  // Trust
+  trustRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  avatarStack: { flexDirection: 'row' },
+  avatarCircle: {
+    width: 36, height: 36, borderRadius: 18, backgroundColor: '#F1F5F9',
+    borderWidth: 2, borderColor: '#FFF',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  avatarEmoji: { fontSize: 14 },
+  starsRow: { flexDirection: 'row', gap: 1, marginBottom: 2 },
+  trustText: { fontSize: 12, color: '#64748B' },
+  trustBold: { fontWeight: '700', color: '#0F172A' },
+
+  // Phone Mockup
+  phoneContainer: { position: 'relative', alignItems: 'center' },
+  phoneMockup: {
+    width: 260, height: 520, backgroundColor: '#1A1F36',
+    borderRadius: 36, padding: 10,
+    ...Platform.select({
+      web: { boxShadow: '0 50px 100px -20px rgba(0,0,0,0.25), 0 30px 60px -30px rgba(0,0,0,0.3)' },
+      default: { shadowColor: '#000', shadowOffset: { width: 0, height: 30 }, shadowOpacity: 0.25, shadowRadius: 50, elevation: 20 },
+    }),
+  },
+  phoneScreen: { flex: 1, backgroundColor: '#FFF', borderRadius: 28, overflow: 'hidden', padding: 14 },
+  dynamicIsland: { alignItems: 'center', marginBottom: 12 },
+  dynamicIslandPill: { width: 70, height: 20, backgroundColor: '#000', borderRadius: 10 },
+  phoneHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: '#F1F5F9', marginBottom: 10,
+  },
+  phoneSubject: { fontSize: 11, fontWeight: '700', color: '#0F172A' },
+  phoneBadgeText: { fontSize: 10, fontWeight: '700', color: '#2563EB', backgroundColor: '#EFF6FF', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+  phoneQuestion: {
+    backgroundColor: '#EFF6FF', borderRadius: 14, padding: 12, marginBottom: 10,
+  },
+  phoneQLabel: { fontSize: 9, fontWeight: '700', color: '#2563EB', marginBottom: 4 },
+  phoneQText: { fontSize: 10, fontWeight: '600', color: '#0F172A', lineHeight: 14 },
+  phoneOptions: { gap: 6 },
+  phoneOption: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 10, padding: 8,
+  },
+  phoneOptionCorrect: { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0' },
+  phoneOptBadge: {
+    width: 16, height: 16, borderRadius: 8, backgroundColor: '#F8FAFC',
+    borderWidth: 1, borderColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center',
+  },
+  phoneOptBadgeText: { fontSize: 7, fontWeight: '700', color: '#64748B' },
+  phoneOptText: { fontSize: 9, color: '#475569', flex: 1 },
+  phoneNextBtn: {
+    backgroundColor: '#0F172A', borderRadius: 10, paddingVertical: 10,
+    alignItems: 'center', marginTop: 12,
+  },
+  phoneNextBtnText: { color: '#FFF', fontSize: 10, fontWeight: '600' },
+
+  // Floating Notifications
+  notifPopup: {
+    position: 'absolute', backgroundColor: '#FFF', borderRadius: 12,
+    paddingHorizontal: 14, paddingVertical: 10,
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    ...Platform.select({
+      web: { boxShadow: '0 10px 40px rgba(0,0,0,0.15)' },
+      default: { shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.15, shadowRadius: 20, elevation: 10 },
+    }),
+    zIndex: 20,
+  },
+  notifIcon: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  notifTitle: { fontSize: 10, fontWeight: '700', color: '#0F172A' },
+  notifSub: { fontSize: 9, color: '#94A3B8' },
+
+  // Stats
+  statsSection: { paddingVertical: 48, paddingHorizontal: 24, backgroundColor: '#F8FAFC' },
+  statsGrid: { maxWidth: 1100, alignSelf: 'center', width: '100%', flexDirection: 'row', flexWrap: 'wrap' },
+  statItem: { alignItems: 'center', width: '50%', paddingVertical: 12, ...(isTablet ? { flex: 1, width: 'auto' } : {}) },
+  statNumber: { fontSize: isWeb ? 40 : 32, fontWeight: '800', color: '#0F172A', letterSpacing: -1 },
+  statLabel: { fontSize: 13, color: '#64748B', marginTop: 4 },
+
+  // Features
+  featuresSection: { paddingVertical: 60, paddingHorizontal: 24, maxWidth: 1100, alignSelf: 'center', width: '100%' },
+  sectionTitle: {
+    fontSize: isWeb ? 40 : 28, fontWeight: '800', color: '#0F172A',
+    lineHeight: isWeb ? 48 : 36, letterSpacing: -1, marginBottom: 12,
+  },
+  sectionTitleLight: { color: '#94A3B8' },
+  sectionSubtitle: { fontSize: 15, color: '#64748B', lineHeight: 24, maxWidth: 500, marginBottom: 36 },
+  featuresGrid: { gap: 14 },
+  featureCardWrap: {},
+  featureCard: {
+    backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E2E8F0',
+    borderRadius: 20, padding: 20,
+    ...Platform.select({
+      web: { transition: 'all 0.3s ease' },
+      default: {},
+    }),
+  },
+  featureIconBox: { width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
+  featureTitle: { fontSize: 16, fontWeight: '700', color: '#0F172A', marginBottom: 6 },
+  featureDesc: { fontSize: 13, color: '#64748B', lineHeight: 20 },
+  viewAllLink: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'center', marginTop: 28 },
+  viewAllText: { fontSize: 14, fontWeight: '600', color: '#2196F3' },
+
+  // Testimonials
+  testimonialsSection: { paddingVertical: 60, paddingHorizontal: 24, backgroundColor: '#F8FAFC', maxWidth: 1100, alignSelf: 'center', width: '100%' },
+  testimonialsGrid: { gap: 14, marginTop: 8 },
+  testimonialWrap: {},
+  testimonialCard: {
+    backgroundColor: 'rgba(33,150,243,0.02)',
+    borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 24, padding: 28,
+  },
+  testimonialContent: { fontSize: 14, color: '#475569', lineHeight: 22, marginTop: 12, marginBottom: 20 },
+  testimonialAuthor: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  testimonialAvatar: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: '#2196F3', alignItems: 'center', justifyContent: 'center',
+  },
+  testimonialInitials: { color: '#FFF', fontSize: 13, fontWeight: '700' },
+  testimonialName: { fontSize: 13, fontWeight: '700', color: '#0F172A' },
+  testimonialRole: { fontSize: 11, color: '#94A3B8' },
+
+  // CTA
+  ctaOuter: { paddingVertical: 60, paddingHorizontal: 24 },
+  ctaCard: {
+    backgroundColor: '#1A1F36', borderRadius: 32, padding: 48,
+    alignItems: 'center', maxWidth: 700, alignSelf: 'center', width: '100%',
+  },
+  ctaTitle: {
+    fontSize: isWeb ? 36 : 24, fontWeight: '800', color: '#FFF',
+    textAlign: 'center', letterSpacing: -0.5, marginBottom: 12,
+  },
+  ctaSubtitle: { fontSize: 14, color: '#94A3B8', textAlign: 'center', marginBottom: 24, maxWidth: 420 },
+  ctaButtons: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'center' },
+  ctaPrimaryBtn: {
+    backgroundColor: '#FFF', paddingVertical: 14, paddingHorizontal: 28, borderRadius: 12,
+  },
+  ctaPrimaryText: { color: '#0F172A', fontSize: 14, fontWeight: '700' },
+  ctaSecondaryBtn: {
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)',
+    paddingVertical: 14, paddingHorizontal: 28, borderRadius: 12,
+  },
+  ctaSecondaryText: { color: '#FFF', fontSize: 14, fontWeight: '600' },
+
+  // Footer
+  footer: { borderTopWidth: 1, borderTopColor: '#F1F5F9', paddingVertical: 24, paddingHorizontal: 24 },
+  footerInner: {
+    maxWidth: 1100, alignSelf: 'center', width: '100%',
+    alignItems: 'center', gap: 12,
+  },
+  footerCopy: { fontSize: 12, color: '#94A3B8', textAlign: 'center' },
+  footerLinks: { flexDirection: 'row', gap: 20 },
+  footerLink: { fontSize: 13, color: '#64748B' },
 });

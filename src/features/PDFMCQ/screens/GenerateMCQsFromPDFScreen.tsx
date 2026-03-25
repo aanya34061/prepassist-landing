@@ -54,8 +54,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 const CONFIG = {
     OPENROUTER_API_KEY: OPENROUTER_API_KEY,
     OPENROUTER_URL: 'https://openrouter.ai/api/v1/chat/completions',
-    // Claude Sonnet 4.5 - superior PDF parsing and MCQ format alignment
-    AI_MODEL: 'anthropic/claude-sonnet-4.5',
+    // Gemini 2.5 Flash - native PDF parsing with fast processing
+    AI_MODEL: 'google/gemini-2.5-flash',
     // File size limits
     MAX_FILE_SIZE_MB: 20,
     MAX_TEXT_LENGTH: 200000,
@@ -1110,14 +1110,20 @@ export default function GenerateMCQsFromPDFScreen() {
     const startProcess = async () => {
         // Check credits first (5 credits for PDF MCQ)
         if (!hasEnoughCredits('pdf_mcq')) {
-            Alert.alert(
-                '💳 Credits Required',
-                `PDF MCQ generation costs 5 credits.\n\nYou have ${credits} credits available.\n\nBuy credits to continue.`,
-                [
-                    { text: 'Cancel', style: 'cancel' },
-                    { text: 'Buy Credits', onPress: () => navigation.navigate('Billing') }
-                ]
-            );
+            if (Platform.OS === 'web') {
+                if (window.confirm(`Credits Required\n\nPDF MCQ generation costs 5 credits.\nYou have ${credits} credits available.\n\nClick OK to buy credits.`)) {
+                    navigation.navigate('Billing');
+                }
+            } else {
+                Alert.alert(
+                    '💳 Credits Required',
+                    `PDF MCQ generation costs 5 credits.\n\nYou have ${credits} credits available.\n\nBuy credits to continue.`,
+                    [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: 'Buy Credits', onPress: () => navigation.navigate('Billing') }
+                    ]
+                );
+            }
             return;
         }
 
@@ -1234,17 +1240,25 @@ export default function GenerateMCQsFromPDFScreen() {
                 console.warn('[PDF-MCQ] Failed to save to local storage:', saveError);
             }
 
-            Alert.alert(
-                '🎉 Success!',
-                `Generated ${generatedMcqs.length} MCQs in ${elapsedSeconds} seconds!\n\nAll data is saved locally on your device.`
-            );
+            if (Platform.OS === 'web') {
+                window.alert(`Success! Generated ${generatedMcqs.length} MCQs in ${elapsedSeconds} seconds!`);
+            } else {
+                Alert.alert(
+                    '🎉 Success!',
+                    `Generated ${generatedMcqs.length} MCQs in ${elapsedSeconds} seconds!\n\nAll data is saved locally on your device.`
+                );
+            }
 
         } catch (error: any) {
             console.error('[PDF-MCQ] Error:', error);
             setStage('error');
             setErrorMessage(error.message || 'Something went wrong');
             setStatusMessage(`❌ ${error.message || 'Error occurred'}`);
-            Alert.alert('Error', error.message || 'Failed to process PDF');
+            if (Platform.OS === 'web') {
+                window.alert(error.message || 'Failed to process PDF');
+            } else {
+                Alert.alert('Error', error.message || 'Failed to process PDF');
+            }
         }
     };
 
@@ -1439,7 +1453,7 @@ export default function GenerateMCQsFromPDFScreen() {
                 <View style={{ position: 'absolute', width: 150, height: 150, borderRadius: 75, backgroundColor: 'rgba(255,255,255,0.055)', top: -50, right: -40 }} />
                 <TouchableOpacity
                     style={[styles.backButton, { backgroundColor: 'rgba(255,255,255,0.18)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.28)', width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' }]}
-                    onPress={() => navigation.goBack()}
+                    onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.navigate('NewHome' as never)}
                 >
                     <Ionicons name="arrow-back" size={20} color="#FFF" />
                 </TouchableOpacity>

@@ -7,6 +7,7 @@ import {
   ScrollView,
   Alert,
   RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -15,6 +16,23 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../features/Reference/theme/ThemeContext';
 import { useWebStyles } from '../components/WebContainer';
+import { supabase } from '../lib/supabase';
+
+const SUBJECT_COLORS = {
+  Polity: '#5EC7B2',
+  Economy: '#34D399',
+  History: '#FBBF24',
+  Geography: '#60A5FA',
+  'Science & Technology': '#22D3EE',
+  Environment: '#4ADE80',
+};
+
+const getSubjectColor = (title) => {
+  for (const [key, color] of Object.entries(SUBJECT_COLORS)) {
+    if (title?.toLowerCase().includes(key.toLowerCase())) return color;
+  }
+  return '#F59E0B';
+};
 
 export default function QuestionBankScreen({ navigation }) {
   const { theme, isDark } = useTheme();
@@ -25,6 +43,11 @@ export default function QuestionBankScreen({ navigation }) {
   const [expandedId, setExpandedId] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedQuestions, setSelectedQuestions] = useState([]);
+
+  // Supabase question sets state
+  const [questionSets, setQuestionSets] = useState([]);
+  const [setsLoading, setSetsLoading] = useState(true);
+  const [setsError, setSetsError] = useState(null);
 
   const loadQuestions = async () => {
     try {
@@ -48,15 +71,34 @@ export default function QuestionBankScreen({ navigation }) {
     }
   };
 
+  const fetchQuestionSets = async () => {
+    try {
+      setSetsLoading(true);
+      setSetsError(null);
+      const { data, error } = await supabase
+        .from('question_sets')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      setQuestionSets(data || []);
+    } catch (error) {
+      console.error('Error fetching question sets:', error);
+      setSetsError('Failed to load question sets');
+    } finally {
+      setSetsLoading(false);
+    }
+  };
+
   useFocusEffect(
     useCallback(() => {
       loadQuestions();
+      fetchQuestionSets();
     }, [])
   );
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadQuestions();
+    await Promise.all([loadQuestions(), fetchQuestionSets()]);
     setRefreshing(false);
   };
 
@@ -146,6 +188,76 @@ export default function QuestionBankScreen({ navigation }) {
           </TouchableOpacity>
           <Text style={[styles.title, { color: isDark ? '#FFFFFF' : '#000000' }]}>Question Bank</Text>
           <Text style={[styles.subtitle, { color: isDark ? '#B0B0B0' : '#000000' }]}>{questions.length} Saved Questions</Text>
+        </View>
+
+        {/* ── Supabase Question Sets Section ── */}
+        <View style={styles.setsSection}>
+          <View style={styles.setsSectionHeader}>
+            <Ionicons name="library" size={20} color={isDark ? '#F59E0B' : '#B45309'} />
+            <Text style={[styles.setsSectionTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>Question Sets</Text>
+          </View>
+
+          {setsLoading ? (
+            <View style={[styles.setsStateBox, { backgroundColor: theme.colors.surface }]}>
+              <ActivityIndicator size="small" color={theme.colors.primary} />
+              <Text style={[styles.setsStateText, { color: theme.colors.textSecondary }]}>Loading question sets…</Text>
+            </View>
+          ) : setsError ? (
+            <View style={[styles.setsStateBox, { backgroundColor: theme.colors.surface }]}>
+              <Ionicons name="warning-outline" size={20} color={theme.colors.error || '#FF3B30'} />
+              <Text style={[styles.setsStateText, { color: theme.colors.error || '#FF3B30' }]}>{setsError}</Text>
+              <TouchableOpacity onPress={fetchQuestionSets}>
+                <Text style={[styles.retryText, { color: theme.colors.primary }]}>Retry</Text>
+              </TouchableOpacity>
+            </View>
+          ) : questionSets.length === 0 ? (
+            <View style={[styles.setsStateBox, { backgroundColor: theme.colors.surface }]}>
+              <Ionicons name="document-text-outline" size={20} color={theme.colors.textSecondary} />
+              <Text style={[styles.setsStateText, { color: theme.colors.textSecondary }]}>No question sets available yet.</Text>
+            </View>
+          ) : (
+            questionSets.map((set) => {
+              const accentColor = getSubjectColor(set.title);
+              return (
+                <TouchableOpacity
+                  key={set.id}
+                  activeOpacity={0.8}
+                  style={[styles.setCard, { backgroundColor: theme.colors.surface, borderColor: isDark ? 'rgba(255,255,255,0.10)' : theme.colors.border }]}
+                  onPress={() => navigation.navigate('QuestionPaper', { setId: set.id, title: set.title })}
+                >
+                  <View style={[styles.setCardStripe, { backgroundColor: accentColor }]} />
+                  <View style={[styles.setCardIcon, { backgroundColor: `${accentColor}22` }]}>
+                    <Ionicons name="book-outline" size={22} color={accentColor} />
+                  </View>
+                  <View style={styles.setCardBody}>
+                    <Text style={[styles.setCardTitle, { color: isDark ? '#FFFFFF' : '#000000' }]} numberOfLines={2}>{set.title}</Text>
+                    <Text style={[styles.setCardDesc, { color: isDark ? '#B0B0B0' : '#6B7280' }]} numberOfLines={1}>
+                      {set.description || 'Practice questions for UPSC'}
+                    </Text>
+                    <View style={styles.setCardMeta}>
+                      {set.year && (
+                        <View style={[styles.setYearPill, { backgroundColor: `${accentColor}22` }]}>
+                          <Ionicons name="calendar-outline" size={10} color={accentColor} />
+                          <Text style={[styles.setYearText, { color: accentColor }]}>{set.year}</Text>
+                        </View>
+                      )}
+                      <View style={[styles.setYearPill, { backgroundColor: isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.05)' }]}>
+                        <Ionicons name="help-circle-outline" size={10} color={isDark ? 'rgba(255,255,255,0.55)' : '#6B7280'} />
+                        <Text style={[styles.setYearText, { color: isDark ? 'rgba(255,255,255,0.55)' : '#6B7280' }]}>MCQs</Text>
+                      </View>
+                    </View>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={isDark ? 'rgba(255,255,255,0.35)' : '#C0C0C0'} />
+                </TouchableOpacity>
+              );
+            })
+          )}
+        </View>
+
+        {/* ── Your Saved Questions ── */}
+        <View style={styles.savedSectionHeader}>
+          <Ionicons name="bookmark" size={18} color={isDark ? '#007AFF' : '#007AFF'} />
+          <Text style={[styles.setsSectionTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>Your Saved Questions</Text>
         </View>
 
         {/* Tag Filters */}
@@ -758,6 +870,105 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFFFFF',
     letterSpacing: -0.4,
+  },
+  // Question Sets section
+  setsSection: {
+    marginBottom: 24,
+  },
+  setsSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 14,
+  },
+  setsSectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: -0.4,
+  },
+  setsStateBox: {
+    borderRadius: 14,
+    padding: 24,
+    alignItems: 'center',
+    gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 3,
+  },
+  setsStateText: {
+    fontSize: 14,
+    fontWeight: '500',
+    letterSpacing: -0.2,
+  },
+  retryText: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  setCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    marginBottom: 10,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 3,
+  },
+  setCardStripe: {
+    width: 3,
+    alignSelf: 'stretch',
+    borderRadius: 2,
+    marginRight: 12,
+  },
+  setCardIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  setCardBody: {
+    flex: 1,
+  },
+  setCardTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+    marginBottom: 3,
+  },
+  setCardDesc: {
+    fontSize: 12,
+    marginBottom: 6,
+  },
+  setCardMeta: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  setYearPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  setYearText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  savedSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 14,
   },
 });
 

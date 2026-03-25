@@ -10,6 +10,7 @@ import {
     Linking,
     Share,
     Dimensions,
+    Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -93,26 +94,34 @@ export const NoteDetailScreen: React.FC<NoteDetailScreenProps> = ({ navigation, 
     };
 
     const handleDelete = () => {
-        Alert.alert(
-            'Delete Note',
-            'Are you sure you want to delete this note? This cannot be undone.',
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Delete',
-                    style: 'destructive',
-                    onPress: async () => {
-                        try {
-                            await deleteNote(noteId);
-                            if (user?.id) deleteNoteFromFirebase(user.id, noteId);
-                            navigation.goBack();
-                        } catch (error) {
-                            Alert.alert('Error', 'Failed to delete note');
-                        }
-                    },
-                },
-            ]
-        );
+        const doDelete = async () => {
+            try {
+                await deleteNote(noteId);
+                if (user?.id) deleteNoteFromFirebase(user.id, noteId);
+                navigation.goBack();
+            } catch (error) {
+                if (Platform.OS === 'web') {
+                    window.alert('Failed to delete note');
+                } else {
+                    Alert.alert('Error', 'Failed to delete note');
+                }
+            }
+        };
+
+        if (Platform.OS === 'web') {
+            if (window.confirm('Are you sure you want to delete this note? This cannot be undone.')) {
+                doDelete();
+            }
+        } else {
+            Alert.alert(
+                'Delete Note',
+                'Are you sure you want to delete this note? This cannot be undone.',
+                [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Delete', style: 'destructive', onPress: doDelete },
+                ]
+            );
+        }
     };
 
     const handleShare = async () => {
@@ -232,7 +241,8 @@ export const NoteDetailScreen: React.FC<NoteDetailScreenProps> = ({ navigation, 
             const analysis = await analyzeForUPSC(fullContent, note.title);
 
             if (analysis.error) {
-                Alert.alert('Analysis Failed', analysis.error);
+                if (Platform.OS === 'web') window.alert(analysis.error);
+                else Alert.alert('Analysis Failed', analysis.error);
                 return;
             }
 
@@ -244,10 +254,12 @@ export const NoteDetailScreen: React.FC<NoteDetailScreenProps> = ({ navigation, 
             if (updatedNote) {
                 setNote(updatedNote);
                 if (user?.id) syncNoteToFirebase(user.id, updatedNote);
-                Alert.alert('Success', 'Note analyzed and summary added!');
+                if (Platform.OS === 'web') window.alert('Note analyzed and summary added!');
+                else Alert.alert('Success', 'Note analyzed and summary added!');
             }
         } catch (error) {
-            Alert.alert('Error', 'Failed to analyze note');
+            if (Platform.OS === 'web') window.alert('Failed to analyze note');
+            else Alert.alert('Error', 'Failed to analyze note');
         } finally {
             setIsAnalyzing(false);
         }

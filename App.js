@@ -80,6 +80,8 @@ import ApiTestScreen from './src/screens/ApiTestScreen';
 // New Home Screen (Firebase replica)
 import NewHomeScreen from './src/screens/NewHomeScreen';
 import QuestionBankScreen from './src/screens/QuestionBankScreen';
+import QuestionSetListScreen from './src/screens/QuestionSetListScreen';
+import QuestionPaperScreen from './src/screens/QuestionPaperScreen';
 
 // Saved Articles Screen
 import SavedArticlesScreen from './src/screens/SavedArticlesScreen';
@@ -93,16 +95,17 @@ const LoadingScreen = () => (
   </View>
 );
 
-// Auth Navigator (Login + Pricing)
+// Auth Navigator (Landing + Login + Pricing)
 const AuthNavigator = () => {
   return (
     <Stack.Navigator
-      initialRouteName="Login"
+      initialRouteName="Landing"
       screenOptions={{
         headerShown: false,
         animation: 'fade',
       }}
     >
+      <Stack.Screen name="Landing" component={LandingScreen} />
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Pricing" component={PricingScreen} />
       <Stack.Screen name="AuthCallback" component={AuthCallbackScreen} />
@@ -167,6 +170,8 @@ const MainNavigator = () => (
     <Stack.Screen name="AIMCQList" component={AIMCQListScreen} />
     {/* Question Bank */}
     <Stack.Screen name="QuestionBank" component={QuestionBankScreen} />
+    <Stack.Screen name="QuestionSetList" component={QuestionSetListScreen} />
+    <Stack.Screen name="QuestionPaper" component={QuestionPaperScreen} />
     {/* Coming Soon */}
     <Stack.Screen name="ComingSoon" component={ComingSoonScreen} />
     {/* Billing */}
