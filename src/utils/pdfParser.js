@@ -82,8 +82,7 @@ const scanWithOCR = async (fileUri, fileName, mimeType, onProgress) => {
 
     onProgress?.('Uploading to OCR service...');
 
-    // Determine file type
-    const isPDF = fileName?.toLowerCase().endsWith('.pdf') || mimeType === 'application/pdf';
+    // Determine file type (isPDF already declared above)
     const dataPrefix = isPDF
       ? 'data:application/pdf;base64,'
       : `data:${mimeType || 'image/png'};base64,`;
