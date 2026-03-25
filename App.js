@@ -199,7 +199,17 @@ const RootNavigator = () => {
     return <LoadingScreen />;
   }
 
-  // Conditionally show Auth or Main based on auth state (same for web and native)
+  // On web: always show Landing first, then user navigates to Login → Main app
+  // On native: skip landing if already logged in
+  if (Platform.OS === 'web') {
+    return (
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="Auth" component={AuthNavigator} options={{ animation: 'fade' }} />
+        <Stack.Screen name="Main" component={MainNavigator} options={{ animation: 'fade' }} />
+      </Stack.Navigator>
+    );
+  }
+
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       {!isAuthenticated ? (

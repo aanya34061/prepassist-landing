@@ -24,7 +24,7 @@ import { SmartTextInput } from '../components/SmartTextInput';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../features/Reference/theme/ThemeContext';
 
-export default function LoginScreen() {
+export default function LoginScreen({ navigation }) {
   // ── Auth (unchanged) ──────────────────────────────────────────────────────
   const { signInWithEmail, signUpWithEmail, sendPasswordOTP, verifyOTPAndResetPassword } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
@@ -85,10 +85,18 @@ export default function LoginScreen() {
             [{ text: 'OK', onPress: () => { setIsSignUp(false); setSuccessMessage(''); } }]);
         } else {
           setSuccessMessage('Successfully signed up! Logging you in...');
+          if (Platform.OS === 'web') {
+            navigation.getParent()?.reset({ index: 0, routes: [{ name: 'Main' }] });
+            return;
+          }
         }
       } else {
         await signInWithEmail(email.trim().toLowerCase(), password);
-        // Auth state change will automatically switch to Main navigator
+        // On web, navigate to Main app after login since both stacks are always mounted
+        if (Platform.OS === 'web') {
+          navigation.getParent()?.reset({ index: 0, routes: [{ name: 'Main' }] });
+          return;
+        }
       }
     } catch (err) {
       let errorMessage = err?.message || 'Authentication failed. Please check your credentials.';
