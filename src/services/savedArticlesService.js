@@ -42,7 +42,8 @@ export const saveArticle = async (url, onStatus) => {
     console.log('[SavedArticles] Scraping:', url);
     const scraped = await smartScrape(url);
 
-    if (scraped.error) {
+    // Only bail if there's an error AND no content (partial results still have content)
+    if (scraped.error && !scraped.content) {
       return { error: scraped.error };
     }
 
@@ -97,6 +98,44 @@ export const saveArticle = async (url, onStatus) => {
   } catch (error) {
     console.error('[SavedArticles] Save failed:', error.message);
     return { error: 'Failed to save article. Please try again.' };
+  }
+};
+
+/**
+ * Save an article directly with pre-scraped data (no re-scraping).
+ * Use this when you already have the article content.
+ */
+export const saveArticleDirect = async ({ url, title, content, domain }) => {
+  try {
+    const existing = await getSavedArticles();
+    const duplicate = existing.find(a => a.url === url);
+    if (duplicate) {
+      console.log('[SavedArticles] Already saved:', url);
+      return { article: duplicate, isDuplicate: true };
+    }
+
+    // Use content snippet as summary (avoid re-calling AI to keep it fast)
+    const summary = content
+      ? content.substring(0, 300).trim() + (content.length > 300 ? '...' : '')
+      : 'No summary available.';
+
+    const article = {
+      id: Date.now(),
+      url,
+      title: title || domain || url,
+      summary,
+      domain: domain || extractDomain(url),
+      savedAt: new Date().toISOString(),
+    };
+
+    existing.unshift(article);
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(existing));
+    console.log('[SavedArticles] Direct save:', article.title);
+
+    return { article, isDuplicate: false };
+  } catch (error) {
+    console.error('[SavedArticles] Direct save failed:', error.message);
+    return { error: 'Failed to save article.' };
   }
 };
 

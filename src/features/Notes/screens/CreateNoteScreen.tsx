@@ -28,7 +28,7 @@ import {
 import { TagPicker } from '../components/TagPicker';
 import { summarizeNoteContent } from '../services/aiSummarizer';
 import { smartScrape, isValidUrl, extractDomain } from '../services/webScraper';
-import { saveArticle as saveToSavedArticles } from '../../../services/savedArticlesService';
+import { saveArticleDirect } from '../../../services/savedArticlesService';
 import { TypeWriterText } from '../../../components/TypeWriterText';
 import { useTheme } from '../../../features/Reference/theme/ThemeContext';
 import { useAuth } from '../../../context/AuthContext';
@@ -368,7 +368,7 @@ export const CreateNoteScreen: React.FC<CreateNoteScreenProps> = ({ navigation, 
         try {
             const result = await smartScrape(sourceLinkUrl.trim());
 
-            if (result.error || result.contentBlocks.length === 0) {
+            if (result.contentBlocks.length === 0 && !result.content) {
                 Alert.alert('Scraping Failed', result.error || 'Could not extract content from this URL.');
                 setNoteSources(prev => prev.map(s =>
                     s.id === sourceId ? { ...s, content: '(Could not extract content)' } : s
@@ -380,28 +380,38 @@ export const CreateNoteScreen: React.FC<CreateNoteScreenProps> = ({ navigation, 
                 }
 
                 // Aggregate all scraped text
-                const textParts: string[] = [];
-                for (const block of result.contentBlocks) {
-                    if (block.type === 'heading' && block.content) {
-                        textParts.push(block.content);
-                    } else if (block.type === 'paragraph' && block.content) {
-                        textParts.push(block.content);
-                    } else if ((block.type === 'bullet' || block.type === 'numbered') && block.items) {
-                        for (const item of block.items) {
-                            textParts.push(`- ${item}`);
+                let scrapedContent = '';
+                if (result.contentBlocks.length > 0) {
+                    const textParts: string[] = [];
+                    for (const block of result.contentBlocks) {
+                        if (block.type === 'heading' && block.content) {
+                            textParts.push(block.content);
+                        } else if (block.type === 'paragraph' && block.content) {
+                            textParts.push(block.content);
+                        } else if ((block.type === 'bullet' || block.type === 'numbered') && block.items) {
+                            for (const item of block.items) {
+                                textParts.push(`- ${item}`);
+                            }
+                        } else if (block.type === 'quote' && block.content) {
+                            textParts.push(`> ${block.content}`);
                         }
-                    } else if (block.type === 'quote' && block.content) {
-                        textParts.push(`> ${block.content}`);
                     }
+                    scrapedContent = textParts.join('\n\n');
+                } else {
+                    // Partial result — use plain content
+                    scrapedContent = result.content || '';
                 }
-
-                const scrapedContent = textParts.join('\n\n');
                 setNoteSources(prev => prev.map(s =>
                     s.id === sourceId ? { ...s, content: scrapedContent, label: result.title || domain } : s
                 ));
 
-                // Also save to Saved Articles section (in background, don't block)
-                saveToSavedArticles(sourceLinkUrl.trim()).catch(e =>
+                // Also save to Saved Articles section with already-scraped data
+                saveArticleDirect({
+                    url: sourceLinkUrl.trim(),
+                    title: result.title || domain,
+                    content: scrapedContent,
+                    domain,
+                }).catch(e =>
                     console.warn('[CreateNote] Background save to Saved Articles failed:', e)
                 );
 

@@ -4,29 +4,49 @@
  */
 import { Platform } from 'react-native';
 
+let pdfjsLib = null;
+
+/**
+ * Lazily load and configure pdfjs-dist (web only).
+ */
+async function getPdfjs() {
+  if (pdfjsLib) return pdfjsLib;
+
+  pdfjsLib = require('pdfjs-dist');
+
+  // Disable the worker to avoid CDN/CORS issues in Expo web.
+  // This runs parsing on the main thread — fine for text extraction.
+  pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+
+  return pdfjsLib;
+}
+
+/**
+ * Convert a blob: URI to an ArrayBuffer (web only).
+ */
+async function blobUriToArrayBuffer(blobUri) {
+  const response = await fetch(blobUri);
+  return response.arrayBuffer();
+}
+
 /**
  * Extract text from a PDF using pdfjs-dist.
  * Works on web platform. Returns empty string on native or on failure.
  *
- * @param {string} source - File URI (native) or base64 data string
+ * @param {string} source - File URI / blob URI (when sourceType='uri') or raw base64 string (when sourceType='base64')
  * @param {'uri' | 'base64'} sourceType - Whether source is a URI or base64 data
  * @returns {Promise<string>} Extracted text, or empty string if extraction fails
  */
 export async function extractTextFromPDF(source, sourceType = 'uri') {
-  // pdfjs-dist only works reliably on web
+  // pdfjs-dist relies on browser APIs — only works on web
   if (Platform.OS !== 'web') {
     return '';
   }
 
   try {
-    const pdfjsLib = await import('pdfjs-dist');
+    const pdfjs = await getPdfjs();
 
-    // Set up the worker
-    if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
-    }
-
-    let loadingTask;
+    let docParams;
 
     if (sourceType === 'base64') {
       // Convert base64 to Uint8Array
@@ -35,13 +55,20 @@ export async function extractTextFromPDF(source, sourceType = 'uri') {
       for (let i = 0; i < binaryString.length; i++) {
         bytes[i] = binaryString.charCodeAt(i);
       }
-      loadingTask = pdfjsLib.getDocument({ data: bytes });
+      docParams = { data: bytes };
+    } else if (source.startsWith('blob:') || source.startsWith('http')) {
+      // Blob URIs and http(s) URLs: fetch as ArrayBuffer for reliable loading
+      const arrayBuffer = await blobUriToArrayBuffer(source);
+      docParams = { data: new Uint8Array(arrayBuffer) };
     } else {
-      // Load from URI
-      loadingTask = pdfjsLib.getDocument(source);
+      // Fallback: let pdfjs try the URI directly
+      docParams = { url: source };
     }
 
-    const pdf = await loadingTask.promise;
+    // Disable worker for this document (runs on main thread)
+    docParams.disableWorker = true;
+
+    const pdf = await pdfjs.getDocument(docParams).promise;
     const numPages = pdf.numPages;
     const textParts = [];
 
@@ -52,7 +79,7 @@ export async function extractTextFromPDF(source, sourceType = 'uri') {
         .map((item) => item.str)
         .join(' ');
       if (pageText.trim()) {
-        textParts.push(pageText);
+        textParts.push(pageText.trim());
       }
     }
 
@@ -60,7 +87,7 @@ export async function extractTextFromPDF(source, sourceType = 'uri') {
     console.log(`[pdfTextExtract] Extracted ${fullText.length} chars from ${numPages} pages`);
     return fullText;
   } catch (error) {
-    console.warn('[pdfTextExtract] Failed to extract text:', error.message);
+    console.warn('[pdfTextExtract] Failed:', error?.message || error);
     return '';
   }
 }
