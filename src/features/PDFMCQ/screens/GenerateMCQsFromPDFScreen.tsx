@@ -274,6 +274,52 @@ function downloadFile(content: string, filename: string, mimeType: string): void
     URL.revokeObjectURL(url);
 }
 
+// ===================== OCR TEXT EXTRACTION (Fallback) =====================
+const OCR_API_KEY = 'K85553321788957';
+const OCR_API_URL = 'https://api.ocr.space/parse/image';
+
+async function extractTextFromPDF(base64Data: string, mimeType: string, fileName: string): Promise<string> {
+    console.log('[PDF-MCQ] Extracting text via OCR API...');
+
+    try {
+        const formData = new FormData();
+        formData.append('apikey', OCR_API_KEY);
+        formData.append('base64Image', `data:${mimeType};base64,${base64Data}`);
+        formData.append('language', 'eng');
+        formData.append('isOverlayRequired', 'false');
+        formData.append('filetype', mimeType === 'application/pdf' ? 'PDF' : 'auto');
+        formData.append('detectOrientation', 'true');
+        formData.append('scale', 'true');
+        formData.append('OCREngine', '2');
+
+        const response = await fetch(OCR_API_URL, {
+            method: 'POST',
+            body: formData,
+        });
+
+        if (!response.ok) {
+            throw new Error(`OCR API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (data.IsErroredOnProcessing) {
+            throw new Error(data.ErrorMessage?.[0] || 'OCR processing failed');
+        }
+
+        const text = data.ParsedResults
+            ?.map((r: any) => r.ParsedText)
+            .join('\n')
+            .trim() || '';
+
+        console.log(`[PDF-MCQ] OCR extracted ${text.length} chars`);
+        return text;
+    } catch (err: any) {
+        console.error('[PDF-MCQ] OCR extraction error:', err);
+        throw new Error('Failed to extract text from PDF: ' + err.message);
+    }
+}
+
 // ===================== STEP 1: Pick File (Web + Native) =====================
 async function pickFile(): Promise<{
     success: boolean;
@@ -642,14 +688,16 @@ REQUIREMENTS:
 RESPOND WITH VALID JSON ONLY (no markdown, no code blocks):
 {"mcqs":[{"question":"Full question text","optionA":"Option A text","optionB":"Option B text","optionC":"Option C text","optionD":"Option D text","correctAnswer":"A","explanation":"Clear explanation"}]}`;
 
+    // Build content: use 'file' type for PDFs, 'image_url' for images
+    const fileContent = mimeType === 'application/pdf'
+        ? { type: 'file', file: { filename: 'document.pdf', file_data: `data:${mimeType};base64,${base64Data}` } }
+        : { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Data}` } };
+
     const messages = [{
         role: 'user',
         content: [
             { type: 'text', text: prompt },
-            {
-                type: 'image_url',
-                image_url: { url: `data:${mimeType};base64,${base64Data}` }
-            }
+            fileContent
         ]
     }];
 
@@ -755,11 +803,16 @@ REQUIREMENTS:
 RESPOND WITH VALID JSON ONLY (no markdown, no code blocks):
 {"mcqs":[{"question":"Full question text here","optionA":"Option A text","optionB":"Option B text","optionC":"Option C text","optionD":"Option D text","correctAnswer":"A","explanation":"Clear explanation of why this is correct"}]}`;
 
+        // Build content: use 'file' type for PDFs, 'image_url' for images
+        const fileContent = mimeType === 'application/pdf'
+            ? { type: 'file', file: { filename: fileName, file_data: `data:${mimeType};base64,${base64Data}` } }
+            : { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Data}` } };
+
         const messages = [{
             role: 'user',
             content: [
                 { type: 'text', text: prompt },
-                { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Data}` } }
+                fileContent
             ]
         }];
 
@@ -780,18 +833,66 @@ RESPOND WITH VALID JSON ONLY (no markdown, no code blocks):
         });
 
         if (!response.ok) {
-            throw new Error(`API Error: ${response.status}`);
+            console.warn(`[PDF-MCQ] Direct PDF API error: ${response.status}, falling back to OCR`);
+        } else {
+            const data = await response.json();
+            const content = data.choices?.[0]?.message?.content;
+
+            if (content) {
+                const mcqs = parseMCQsFromResponse(content);
+                if (mcqs.length > 0) {
+                    console.log(`[PDF-MCQ] Generated ${mcqs.length} MCQs in ${(Date.now() - startTime) / 1000}s`);
+                    return mcqs;
+                }
+            }
+            console.warn('[PDF-MCQ] Direct PDF approach returned no MCQs, falling back to OCR');
         }
 
-        const data = await response.json();
-        const content = data.choices?.[0]?.message?.content;
+        // ── FALLBACK: Extract text via OCR, then generate MCQs from text ──
+        console.log('[PDF-MCQ] Using OCR fallback...');
+        const extractedText = await extractTextFromPDF(base64Data, mimeType, fileName);
 
-        if (!content) {
+        if (!extractedText || extractedText.length < 50) {
+            throw new Error('Could not extract text from PDF. Please try a different file.');
+        }
+
+        const textPrompt = `You are an expert UPSC exam question creator. Based on the following text extracted from a document, create EXACTLY ${count} high-quality MCQs.
+
+TEXT FROM DOCUMENT:
+${extractedText.substring(0, CONFIG.MAX_TEXT_LENGTH)}
+
+RESPOND WITH VALID JSON ONLY (no markdown, no code blocks):
+{"mcqs":[{"question":"Full question text","optionA":"Option A text","optionB":"Option B text","optionC":"Option C text","optionD":"Option D text","correctAnswer":"A","explanation":"Clear explanation"}]}`;
+
+        const textResponse = await fetch(CONFIG.OPENROUTER_URL, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${CONFIG.OPENROUTER_API_KEY}`,
+                'Content-Type': 'application/json',
+                'HTTP-Referer': 'https://upsc-prep.app',
+                'X-Title': 'UPSC PDF MCQ Generator',
+            },
+            body: JSON.stringify({
+                model: CONFIG.AI_MODEL,
+                messages: [{ role: 'user', content: textPrompt }],
+                temperature: 0.7,
+                max_tokens: 8192,
+            }),
+        });
+
+        if (!textResponse.ok) {
+            throw new Error(`API Error: ${textResponse.status}`);
+        }
+
+        const textData = await textResponse.json();
+        const textContent = textData.choices?.[0]?.message?.content;
+
+        if (!textContent) {
             throw new Error('No content in response');
         }
 
-        const mcqs = parseMCQsFromResponse(content);
-        console.log(`[PDF-MCQ] Generated ${mcqs.length} MCQs in ${(Date.now() - startTime) / 1000}s`);
+        const mcqs = parseMCQsFromResponse(textContent);
+        console.log(`[PDF-MCQ] Generated ${mcqs.length} MCQs via OCR fallback in ${(Date.now() - startTime) / 1000}s`);
         return mcqs;
     }
 
