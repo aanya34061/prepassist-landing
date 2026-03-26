@@ -11,27 +11,27 @@
         },
         {
             "source": "/admin",
-            "destination": "https://admin-panel-inky-eta.vercel.app/"
+            "destination": "https://admin-panel-lgpe.vercel.app/"
         },
         {
             "source": "/dashboard",
-            "destination": "https://admin-panel-inky-eta.vercel.app/dashboard"
+            "destination": "https://admin-panel-lgpe.vercel.app/dashboard"
         },
         {
             "source": "/dashboard/:path*",
-            "destination": "https://admin-panel-inky-eta.vercel.app/dashboard/:path*"
+            "destination": "https://admin-panel-lgpe.vercel.app/dashboard/:path*"
         },
         {
             "source": "/_next/:path*",
-            "destination": "https://admin-panel-inky-eta.vercel.app/_next/:path*"
+            "destination": "https://admin-panel-lgpe.vercel.app/_next/:path*"
         },
         {
             "source": "/api/:path*",
-            "destination": "https://admin-panel-inky-eta.vercel.app/api/:path*"
+            "destination": "https://admin-panel-lgpe.vercel.app/api/:path*"
         },
         {
             "source": "/prepassist-logo.png",
-            "destination": "https://admin-panel-inky-eta.vercel.app/prepassist-logo.png"
+            "destination": "https://admin-panel-lgpe.vercel.app/prepassist-logo.png"
         },
         {
             "source": "/(.*)",
