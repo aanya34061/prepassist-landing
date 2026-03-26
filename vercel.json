@@ -11,11 +11,7 @@
         },
         {
             "source": "/admin",
-            "destination": "https://admin-panel-darsh1153s-projects.vercel.app/admin"
-        },
-        {
-            "source": "/admin/:path*",
-            "destination": "https://admin-panel-darsh1153s-projects.vercel.app/admin/:path*"
+            "destination": "https://admin-panel-darsh1153s-projects.vercel.app/"
         },
         {
             "source": "/dashboard",
