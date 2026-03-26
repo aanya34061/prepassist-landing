@@ -1212,14 +1212,6 @@ export default function GenerateMCQsFromPDFScreen() {
                 );
             }
 
-            // NOW deduct credits since we have a file and user is committed
-            setStatusMessage('💎 Validating credits...');
-            const success = await deductCredits('pdf_mcq');
-            if (!success) {
-                setStage('idle');
-                return;
-            }
-
             // Reset MCQ state
             setMcqs([]);
             setSelectedAnswers({});
@@ -1266,6 +1258,9 @@ export default function GenerateMCQsFromPDFScreen() {
             if (generatedMcqs.length === 0) {
                 throw new Error('Could not generate MCQs. Please try a different PDF.');
             }
+
+            // Deduct credits only AFTER successful generation
+            await deductCredits('pdf_mcq');
 
             // Success!
             setMcqs(generatedMcqs);
