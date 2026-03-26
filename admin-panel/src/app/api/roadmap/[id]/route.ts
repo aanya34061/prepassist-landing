@@ -84,7 +84,6 @@ export async function PUT(
             updatedAt: now,
         });
 
-        // Update subtopics - delete existing and recreate
         if (subtopics !== undefined) {
             const existingSubtopics = await topicRef.collection('subtopics').get();
             const batch = db.batch();
@@ -107,7 +106,6 @@ export async function PUT(
             }
         }
 
-        // Update sources - delete existing and recreate
         if (sources !== undefined) {
             const existingSources = await topicRef.collection('sources').get();
             const batch = db.batch();
@@ -169,7 +167,6 @@ export async function DELETE(
 
         const topicData = topicDoc.data()!;
 
-        // Delete subcollections first
         const subtopics = await topicRef.collection('subtopics').get();
         const sources = await topicRef.collection('sources').get();
         const batch = db.batch();

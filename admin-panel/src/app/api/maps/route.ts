@@ -61,7 +61,6 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Image is required' }, { status: 400 });
         }
 
-        // Save image locally
         const { writeFile, mkdir } = await import('fs/promises');
         const path = await import('path');
         const uploadsDir = path.join(process.cwd(), 'public', 'uploads', 'maps');
