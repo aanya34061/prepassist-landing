@@ -138,10 +138,6 @@ const AIMindMapScreen: React.FC<AIMindMapScreenProps> = ({ navigation, route }) 
       return;
     }
 
-    // Deduct credits before generating
-    const deducted = await deductCredits('mind_map');
-    if (!deducted) return;
-
     setInputText('');
     setGenerating(true);
     setError(null);
@@ -164,6 +160,9 @@ const AIMindMapScreen: React.FC<AIMindMapScreenProps> = ({ navigation, route }) 
         conversationHistory,
         mindMap.mermaidCode
       );
+
+      // Deduct credits only after successful generation
+      await deductCredits('mind_map');
 
       // Add assistant response
       updatedMindMap = addMessage(

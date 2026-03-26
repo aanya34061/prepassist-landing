@@ -95,10 +95,6 @@ export default function MainsAnswerEvaluationScreen({ navigation }) {
       return;
     }
 
-    // Deduct credits before starting
-    const success = await deductCredits('essay_evaluation');
-    if (!success) return;
-
     setIsEvaluating(true);
     setEvaluation(null);
 
@@ -299,6 +295,9 @@ Return ONLY valid JSON, no markdown blocks or explanation.`;
       }
 
       console.log('[Essay] Evaluation parsed, score:', evalResult.score);
+
+      // Deduct credits only after successful evaluation
+      await deductCredits('essay_evaluation');
 
       setEvaluation(evalResult);
 

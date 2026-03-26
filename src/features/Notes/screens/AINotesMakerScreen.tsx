@@ -568,13 +568,6 @@ export const AINotesMakerScreen: React.FC<{ navigation: any }> = ({ navigation }
         setGeneratingStatus('Summarizing...');
 
         try {
-            // Deduct Credit (optional but consistent)
-            const deducted = await deductCredits('summary');
-            if (!deducted) {
-                setGenerating(false);
-                return;
-            }
-
             // Combine main note content with all sources
             let fullContent = noteContent.trim();
 
@@ -594,6 +587,9 @@ export const AINotesMakerScreen: React.FC<{ navigation: any }> = ({ navigation }
             if (response.error) {
                 throw new Error(response.error);
             }
+
+            // Deduct credits only after successful generation
+            await deductCredits('summary');
 
             setNoteSummary(response.summary);
             Alert.alert('Success', 'Summary generated from all sources!');
@@ -940,10 +936,6 @@ export const AINotesMakerScreen: React.FC<{ navigation: any }> = ({ navigation }
         // Feature Gate: Credits
         if (!checkCreditBalance()) return;
 
-        // Deduct Credit
-        const deducted = await deductCredits('summary');
-        if (!deducted) return;
-
         // Get notes to summarize
         let notesToSummarize = notes;
         if (selectedNoteIds.length > 0) {
@@ -1123,6 +1115,9 @@ Generate a professional, exam-oriented summary. NO emojis, NO markdown.`;
             }
 
             console.log('[AINotes] Summary saved!');
+
+            // Deduct credits only after successful generation
+            await deductCredits('summary');
 
             setShowSummaryModal(false);
             await loadData();
