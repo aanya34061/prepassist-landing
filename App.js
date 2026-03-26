@@ -3,6 +3,32 @@ import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, View, StyleSheet, Alert, Modal, Text, Platform } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+
+// ── Fix Alert.alert for Web ────────────────────────────────────────────────
+// React Native's Alert.alert is a no-op on web. This patches it to use
+// window.alert / window.confirm so ALL dialogs across the app work on web.
+if (Platform.OS === 'web') {
+  Alert.alert = (title, message, buttons) => {
+    if (buttons && buttons.length > 0) {
+      const actionBtn = buttons.find(b => b.style !== 'cancel' && b.onPress);
+      const cancelBtn = buttons.find(b => b.style === 'cancel');
+      if (actionBtn) {
+        if (window.confirm(`${title}${message ? '\n\n' + message : ''}`)) {
+          actionBtn.onPress?.();
+        } else {
+          cancelBtn?.onPress?.();
+        }
+      } else if (buttons.length === 1 && buttons[0].onPress) {
+        window.alert(`${title}${message ? '\n\n' + message : ''}`);
+        buttons[0].onPress();
+      } else {
+        window.alert(`${title}${message ? '\n\n' + message : ''}`);
+      }
+    } else {
+      window.alert(`${title}${message ? '\n\n' + message : ''}`);
+    }
+  };
+}
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
