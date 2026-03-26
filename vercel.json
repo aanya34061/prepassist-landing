@@ -11,27 +11,27 @@
         },
         {
             "source": "/admin",
-            "destination": "https://admin-panel-inky-eta.vercel.app/"
+            "destination": "https://prepassist-dashboard-git-main-vamsis-projects-4d71922c.vercel.app/"
         },
         {
             "source": "/dashboard",
-            "destination": "https://admin-panel-inky-eta.vercel.app/dashboard"
+            "destination": "https://prepassist-dashboard-git-main-vamsis-projects-4d71922c.vercel.app/dashboard"
         },
         {
             "source": "/dashboard/:path*",
-            "destination": "https://admin-panel-inky-eta.vercel.app/dashboard/:path*"
+            "destination": "https://prepassist-dashboard-git-main-vamsis-projects-4d71922c.vercel.app/dashboard/:path*"
         },
         {
             "source": "/_next/:path*",
-            "destination": "https://admin-panel-inky-eta.vercel.app/_next/:path*"
+            "destination": "https://prepassist-dashboard-git-main-vamsis-projects-4d71922c.vercel.app/_next/:path*"
         },
         {
             "source": "/api/:path*",
-            "destination": "https://admin-panel-inky-eta.vercel.app/api/:path*"
+            "destination": "https://prepassist-dashboard-git-main-vamsis-projects-4d71922c.vercel.app/api/:path*"
         },
         {
             "source": "/prepassist-logo.png",
-            "destination": "https://admin-panel-inky-eta.vercel.app/prepassist-logo.png"
+            "destination": "https://prepassist-dashboard-git-main-vamsis-projects-4d71922c.vercel.app/prepassist-logo.png"
         },
         {
             "source": "/(.*)",
