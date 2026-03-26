@@ -1,0 +1,10 @@
+{
+  "installCommand": "npm install --legacy-peer-deps",
+  "framework": "nextjs",
+  "crons": [
+    {
+      "path": "/api/news/fetch-daily",
+      "schedule": "30 2 * * *"
+    }
+  ]
+}
