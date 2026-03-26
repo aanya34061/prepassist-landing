@@ -5,14 +5,11 @@ import {
   View,
   TouchableOpacity,
   ScrollView,
-  Alert,
   RefreshControl,
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../features/Reference/theme/ThemeContext';
 import { useWebStyles } from '../components/WebContainer';
@@ -37,39 +34,12 @@ const getSubjectColor = (title) => {
 export default function QuestionBankScreen({ navigation }) {
   const { theme, isDark } = useTheme();
   const { horizontalPadding, isWeb } = useWebStyles();
-  const [questions, setQuestions] = useState([]);
-  const [allTags, setAllTags] = useState({ system: [], user: [] });
-  const [selectedTags, setSelectedTags] = useState([]);
-  const [expandedId, setExpandedId] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedQuestions, setSelectedQuestions] = useState([]);
 
   // Supabase question sets state
   const [questionSets, setQuestionSets] = useState([]);
   const [setsLoading, setSetsLoading] = useState(true);
   const [setsError, setSetsError] = useState(null);
-
-  const loadQuestions = async () => {
-    try {
-      const data = await AsyncStorage.getItem('questionBank');
-      const savedQuestions = data ? JSON.parse(data) : [];
-      setQuestions(savedQuestions);
-
-      // Extract all unique tags
-      const systemTags = new Set();
-      const userTags = new Set();
-      savedQuestions.forEach(q => {
-        q.systemTags?.forEach(tag => systemTags.add(tag));
-        q.userTags?.forEach(tag => userTags.add(tag));
-      });
-      setAllTags({
-        system: Array.from(systemTags),
-        user: Array.from(userTags),
-      });
-    } catch (error) {
-      console.error('Failed to load questions:', error);
-    }
-  };
 
   const fetchQuestionSets = async () => {
     try {
@@ -91,7 +61,6 @@ export default function QuestionBankScreen({ navigation }) {
 
   useFocusEffect(
     useCallback(() => {
-      loadQuestions();
       fetchQuestionSets();
     }, [])
   );
@@ -117,78 +86,8 @@ export default function QuestionBankScreen({ navigation }) {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([loadQuestions(), fetchQuestionSets()]);
+    await fetchQuestionSets();
     setRefreshing(false);
-  };
-
-  const toggleTag = (tag) => {
-    if (selectedTags.includes(tag)) {
-      setSelectedTags(selectedTags.filter(t => t !== tag));
-    } else {
-      setSelectedTags([...selectedTags, tag]);
-    }
-  };
-
-  const filteredQuestions = selectedTags.length === 0
-    ? questions
-    : questions.filter(q => {
-        const allQuestionTags = [...(q.systemTags || []), ...(q.userTags || [])];
-        return selectedTags.some(tag => allQuestionTags.includes(tag));
-      });
-
-  const toggleExpand = (id) => {
-    setExpandedId(expandedId === id ? null : id);
-  };
-
-  const toggleSelectQuestion = (id) => {
-    if (selectedQuestions.includes(id)) {
-      setSelectedQuestions(selectedQuestions.filter(qId => qId !== id));
-    } else {
-      setSelectedQuestions([...selectedQuestions, id]);
-    }
-  };
-
-  const deleteQuestion = async (id) => {
-    Alert.alert(
-      'Delete Question',
-      'Are you sure you want to remove this question?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            const updatedQuestions = questions.filter(q => q.id !== id);
-            await AsyncStorage.setItem('questionBank', JSON.stringify(updatedQuestions));
-            setQuestions(updatedQuestions);
-          },
-        },
-      ]
-    );
-  };
-
-  const clearAllTags = () => {
-    setSelectedTags([]);
-  };
-
-  const startTestWithSelected = () => {
-    if (selectedQuestions.length === 0) {
-      Alert.alert('Select Questions', 'Please select at least one question to start the test.');
-      return;
-    }
-    const testQuestions = questions.filter(q => selectedQuestions.includes(q.id));
-    navigation.navigate('Test', {
-      questions: testQuestions,
-      config: { numQuestions: testQuestions.length.toString(), timeLimit: '15' },
-    });
-  };
-
-  const selectAll = () => {
-    setSelectedQuestions(filteredQuestions.map(q => q.id));
-  };
-
-  const deselectAll = () => {
-    setSelectedQuestions([]);
   };
 
   return (
@@ -206,7 +105,6 @@ export default function QuestionBankScreen({ navigation }) {
             <Text style={[styles.backText, { color: theme.colors.primary }]}>← Back</Text>
           </TouchableOpacity>
           <Text style={[styles.title, { color: isDark ? '#FFFFFF' : '#000000' }]}>Question Bank</Text>
-          <Text style={[styles.subtitle, { color: isDark ? '#B0B0B0' : '#000000' }]}>{questions.length} Saved Questions</Text>
         </View>
 
         {/* ── Supabase Question Sets Section ── */}
@@ -273,238 +171,6 @@ export default function QuestionBankScreen({ navigation }) {
           )}
         </View>
 
-        {/* ── Your Saved Questions ── */}
-        <View style={styles.savedSectionHeader}>
-          <Ionicons name="bookmark" size={18} color={isDark ? '#007AFF' : '#007AFF'} />
-          <Text style={[styles.setsSectionTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>Your Saved Questions</Text>
-        </View>
-
-        {/* Tag Filters */}
-        {(allTags.system.length > 0 || allTags.user.length > 0) && (
-          <View style={[styles.filterSection, { backgroundColor: theme.colors.surface }]}>
-            <View style={styles.filterHeader}>
-              <Text style={[styles.filterTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>Filter by Tags</Text>
-              {selectedTags.length > 0 && (
-                <TouchableOpacity onPress={clearAllTags}>
-                  <Text style={[styles.clearText, { color: theme.colors.error }]}>Clear All</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-
-            {/* System Tags */}
-            {allTags.system.length > 0 && (
-              <View style={styles.tagGroup}>
-                <Text style={[styles.tagGroupLabel, { color: isDark ? '#B0B0B0' : '#1C1C1E' }]}>Topic Tags</Text>
-                <View style={styles.tagsList}>
-                  {allTags.system.map((tag, i) => (
-                    <TouchableOpacity
-                      key={`sys-${i}`}
-                      style={[
-                        styles.filterTag,
-                        { backgroundColor: theme.colors.surfaceSecondary, borderColor: theme.colors.border },
-                        selectedTags.includes(tag) && { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
-                      ]}
-                      onPress={() => toggleTag(tag)}
-                    >
-                      <Text style={[
-                        styles.filterTagText,
-                        { color: isDark ? '#FFFFFF' : '#000000' },
-                        selectedTags.includes(tag) && styles.filterTagTextActive,
-                      ]}>
-                        {tag ? tag.charAt(0).toUpperCase() + tag.slice(1) : ''}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-            )}
-
-            {/* User Tags */}
-            {allTags.user.length > 0 && (
-              <View style={styles.tagGroup}>
-                <Text style={[styles.tagGroupLabel, { color: isDark ? '#B0B0B0' : '#1C1C1E' }]}>Your Tags</Text>
-                <View style={styles.tagsList}>
-                  {allTags.user.map((tag, i) => (
-                    <TouchableOpacity
-                      key={`usr-${i}`}
-                      style={[
-                        styles.filterTag,
-                        { backgroundColor: 'transparent', borderColor: theme.colors.success },
-                        selectedTags.includes(tag) && { backgroundColor: theme.colors.success, borderColor: theme.colors.success },
-                      ]}
-                      onPress={() => toggleTag(tag)}
-                    >
-                      <Text style={[
-                        styles.filterTagText,
-                        { color: theme.colors.success },
-                        selectedTags.includes(tag) && styles.filterTagTextActive,
-                      ]}>
-                        {tag ? tag.charAt(0).toUpperCase() + tag.slice(1) : ''}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-            )}
-          </View>
-        )}
-
-        {/* Selection Actions */}
-        {filteredQuestions.length > 0 && (
-          <View style={styles.selectionBar}>
-            <Text style={[styles.selectionText, { color: isDark ? '#B0B0B0' : '#000000' }]}>
-              {selectedQuestions.length} Selected
-            </Text>
-            <View style={styles.selectionActions}>
-              <TouchableOpacity onPress={selectedQuestions.length === filteredQuestions.length ? deselectAll : selectAll}>
-                <Text style={[styles.selectAllText, { color: theme.colors.primary }]}>
-                  {selectedQuestions.length === filteredQuestions.length ? 'Deselect All' : 'Select All'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-
-        {/* Questions List */}
-        {filteredQuestions.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Ionicons name="library-outline" size={48} color={theme.colors.textSecondary} />
-            <Text style={[styles.emptyTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-              {questions.length === 0 ? 'No Saved Questions' : 'No Matching Questions'}
-            </Text>
-            <Text style={[styles.emptyDesc, { color: isDark ? '#B0B0B0' : '#000000' }]}>
-              {questions.length === 0
-                ? 'Generate questions and save them here for later practice.'
-                : 'Try adjusting your tag filters.'}
-            </Text>
-          </View>
-        ) : (
-          filteredQuestions.map((q, index) => (
-            <View key={q.id} style={[styles.questionCard, { backgroundColor: theme.colors.surface }]}>
-              <TouchableOpacity
-                style={styles.questionHeader}
-                activeOpacity={0.7}
-                onPress={() => toggleExpand(q.id)}
-              >
-                {/* Checkbox */}
-                <TouchableOpacity
-                  style={[styles.checkbox, { borderColor: theme.colors.border }, selectedQuestions.includes(q.id) && { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary }]}
-                  onPress={() => toggleSelectQuestion(q.id)}
-                >
-                  {selectedQuestions.includes(q.id) && (
-                    <Ionicons name="checkmark" size={14} color="#FFF" />
-                  )}
-                </TouchableOpacity>
-
-                <View style={styles.questionInfo}>
-                  <Text style={[styles.qText, { color: isDark ? '#FFFFFF' : '#000000' }]} numberOfLines={expandedId === q.id ? undefined : 2}>
-                    {q.question ? q.question.charAt(0).toUpperCase() + q.question.slice(1) : ''}
-                  </Text>
-                </View>
-                <Ionicons name={expandedId === q.id ? 'remove' : 'add'} size={24} color={theme.colors.textSecondary} />
-              </TouchableOpacity>
-
-              {/* Tags Preview (always visible) */}
-              <View style={styles.tagsPreview}>
-                {q.systemTags?.slice(0, 3).map((tag, i) => (
-                  <View key={`st-${i}`} style={styles.previewSystemTag}>
-                    <Text style={styles.previewSystemTagText}>{tag ? tag.charAt(0).toUpperCase() + tag.slice(1) : ''}</Text>
-                  </View>
-                ))}
-                {q.userTags?.slice(0, 2).map((tag, i) => (
-                  <View key={`ut-${i}`} style={styles.previewUserTag}>
-                    <Text style={styles.previewUserTagText}>{tag ? tag.charAt(0).toUpperCase() + tag.slice(1) : ''}</Text>
-                  </View>
-                ))}
-              </View>
-
-              {expandedId === q.id && (
-                <View style={[styles.expandedContent, { borderTopColor: theme.colors.border }]}>
-                  {/* Options */}
-                  <View style={styles.optionsList}>
-                    {q.options.map((opt, i) => (
-                      <View
-                        key={i}
-                        style={[styles.optionItem, { backgroundColor: theme.colors.surfaceSecondary }, i === q.correct && { backgroundColor: theme.colors.successBg }]}
-                      >
-                        <Text style={[styles.optionLetter, { color: isDark ? '#B0B0B0' : '#000000' }, i === q.correct && { color: theme.colors.success }]}>
-                          {String.fromCharCode(65 + i)}
-                        </Text>
-                        <Text style={[styles.optionText, { color: isDark ? '#FFFFFF' : '#000000' }, i === q.correct && { color: theme.colors.success }]}>
-                          {opt ? opt.charAt(0).toUpperCase() + opt.slice(1) : ''}
-                        </Text>
-                        {i === q.correct && <Ionicons name="checkmark-circle" size={16} color={theme.colors.success} />}
-                      </View>
-                    ))}
-                  </View>
-
-                  {/* Explanation */}
-                  <View style={[styles.explanationBox, { backgroundColor: theme.colors.warningBg }]}>
-                    <Text style={[styles.explanationTitle, { color: theme.colors.warning }]}>
-                      <Ionicons name="book" size={13} color={theme.colors.warning} /> Explanation
-                    </Text>
-                    <Text style={[styles.explanationText, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                      {q.explanation ? q.explanation.charAt(0).toUpperCase() + q.explanation.slice(1) : ''}
-                    </Text>
-                  </View>
-
-                  {/* All Tags */}
-                  <View style={styles.allTagsContainer}>
-                    {q.systemTags?.length > 0 && (
-                      <View style={styles.tagSection}>
-                        <Text style={styles.tagSectionLabel}>Topic Tags</Text>
-                        <View style={styles.tagsList}>
-                          {q.systemTags.map((tag, i) => (
-                            <View key={i} style={styles.systemTag}>
-                              <Text style={styles.systemTagText}>{tag ? tag.charAt(0).toUpperCase() + tag.slice(1) : ''}</Text>
-                            </View>
-                          ))}
-                        </View>
-                      </View>
-                    )}
-                    {q.userTags?.length > 0 && (
-                      <View style={styles.tagSection}>
-                        <Text style={styles.tagSectionLabel}>Your Tags</Text>
-                        <View style={styles.tagsList}>
-                          {q.userTags.map((tag, i) => (
-                            <View key={i} style={styles.userTag}>
-                              <Text style={styles.userTagText}>{tag ? tag.charAt(0).toUpperCase() + tag.slice(1) : ''}</Text>
-                            </View>
-                          ))}
-                        </View>
-                      </View>
-                    )}
-                  </View>
-
-                  {/* Delete Button */}
-                  <TouchableOpacity
-                    style={[styles.deleteButton, { backgroundColor: theme.colors.errorBg }]}
-                    onPress={() => deleteQuestion(q.id)}
-                  >
-                    <Ionicons name="trash-outline" size={16} color={theme.colors.error} />
-                    <Text style={[styles.deleteText, { color: theme.colors.error }]}> Remove from Bank</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </View>
-          ))
-        )}
-
-        {/* Start Test Button */}
-        {selectedQuestions.length > 0 && (
-          <TouchableOpacity style={styles.testButton} activeOpacity={0.8} onPress={startTestWithSelected}>
-            <LinearGradient
-              colors={['#007AFF', '#0055D4']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.testGradient}
-            >
-              <Text style={styles.testButtonText}>
-                Take Test ({selectedQuestions.length} questions) →
-              </Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        )}
       </ScrollView>
     </SafeAreaView>
   );

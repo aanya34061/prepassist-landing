@@ -26,7 +26,7 @@ function showAlert(title: string, message: string, buttons?: Array<{ text: strin
             window.alert(`${title}\n\n${message}`);
         }
     } else {
-        showAlert(title, message, buttons as any);
+        Alert.alert(title, message, buttons as any);
     }
 }
 

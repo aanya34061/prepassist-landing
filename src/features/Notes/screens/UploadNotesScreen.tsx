@@ -623,14 +623,20 @@ export const UploadNotesScreen: React.FC<UPSCNotesScreenProps> = ({ navigation }
                     if (isFreePlan) {
                         const allNotes = await getAllNotes();
                         if (allNotes.length >= FREE_NOTE_LIMIT) {
-                            Alert.alert(
-                                'Note Limit Reached',
-                                `Free users can create up to ${FREE_NOTE_LIMIT} notes.\n\nGet the Cloud Storage plan at just ₹199/month for unlimited notes, PDF storage & cloud sync.`,
-                                [
-                                    { text: 'Cancel', style: 'cancel' },
-                                    { text: 'Get Subscription', onPress: () => navigation.navigate('Billing') },
-                                ]
-                            );
+                            if (Platform.OS === 'web') {
+                                if (window.confirm(`Note Limit Reached\n\nFree users can create up to ${FREE_NOTE_LIMIT} notes.\n\nGet the Cloud Storage plan at just ₹199/month for unlimited notes, PDF storage & cloud sync.\n\nClick OK to view subscription options.`)) {
+                                    navigation.navigate('Billing');
+                                }
+                            } else {
+                                Alert.alert(
+                                    'Note Limit Reached',
+                                    `Free users can create up to ${FREE_NOTE_LIMIT} notes.\n\nGet the Cloud Storage plan at just ₹199/month for unlimited notes, PDF storage & cloud sync.`,
+                                    [
+                                        { text: 'Cancel', style: 'cancel' },
+                                        { text: 'Get Subscription', onPress: () => navigation.navigate('Billing') },
+                                    ]
+                                );
+                            }
                             return;
                         }
                     }

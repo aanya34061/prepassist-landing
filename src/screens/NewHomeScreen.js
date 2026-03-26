@@ -146,6 +146,7 @@ export default function NewHomeScreen({ navigation }) {
   const [newsMatches, setNewsMatches]             = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [loadingMatches, setLoadingMatches]       = useState(false);
+  const [seenMatchCount, setSeenMatchCount]       = useState(0);
   const [flashCards, setFlashCards]               = useState([]);
   const [learnedIds, setLearnedIds]               = useState(new Set());
 
@@ -167,13 +168,16 @@ export default function NewHomeScreen({ navigation }) {
   }, [user?.id]));
 
   const loadAll = async () => {
+    const [localStats, localStreak] = await Promise.all([getStats(), checkStreakStatus()]);
     const [fbStats, fbStreak] = await Promise.all([
       loadStatsFromFirebase(user?.id),
       loadStreakFromFirebase(user?.id),
     ]);
-    const [localStats, localStreak] = await Promise.all([getStats(), checkStreakStatus()]);
-    setStats(fbStats   || localStats);
-    setStreak(fbStreak || localStreak);
+    // Prefer local stats (always up-to-date) unless Firebase has more data (e.g. from another device)
+    const useFirebaseStats = fbStats && (fbStats.totalTests || 0) > (localStats.totalTests || 0);
+    const useFirebaseStreak = fbStreak && (fbStreak.longestStreak || 0) > (localStreak.longestStreak || 0);
+    setStats(useFirebaseStats ? fbStats : localStats);
+    setStreak(useFirebaseStreak ? fbStreak : localStreak);
 
     try {
       const allNotes = await getAllNotes();
@@ -285,12 +289,15 @@ export default function NewHomeScreen({ navigation }) {
             </View>
             <TouchableOpacity
               style={[styles.bellButton, isDark && styles.bellButtonDark]}
-              onPress={() => setShowNotifications(true)}
+              onPress={() => {
+                setShowNotifications(true);
+                setSeenMatchCount(newsMatches.length);
+              }}
             >
               <Ionicons name="notifications-outline" size={22} color={isDark ? '#FFF' : '#374151'} />
-              {newsMatches.length > 0 && (
+              {newsMatches.length > seenMatchCount && (
                 <View style={styles.bellBadge}>
-                  <Text style={styles.bellBadgeText}>{newsMatches.length}</Text>
+                  <Text style={styles.bellBadgeText}>{newsMatches.length - seenMatchCount}</Text>
                 </View>
               )}
             </TouchableOpacity>

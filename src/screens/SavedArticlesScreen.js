@@ -98,8 +98,8 @@ const EmptyState = ({ dark }) => (
 
 // ── Main Screen ──────────────────────────────────────────────────────────────
 const SavedArticlesScreen = ({ navigation }) => {
-  const { theme } = useTheme();
-  const dark = theme === 'dark';
+  const { isDark } = useTheme();
+  const dark = isDark;
   const insets = useSafeAreaInsets();
 
   const [articles, setArticles] = useState([]);

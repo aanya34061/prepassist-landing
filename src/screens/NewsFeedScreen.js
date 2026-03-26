@@ -24,6 +24,7 @@ import { useWebStyles } from '../components/WebContainer';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SmartTextInput } from '../components/SmartTextInput';
 import * as WebBrowser from 'expo-web-browser';
+import { useFocusEffect } from '@react-navigation/native';
 import { getSavedArticles, deleteSavedArticle } from '../services/savedArticlesService';
 import { supabase } from '../lib/supabase';
 
@@ -265,6 +266,11 @@ export default function NewsFeedScreen({ navigation, route }) {
   useEffect(() => {
     if (activeTab === 'saved') loadSavedArticles();
   }, [activeTab]);
+
+  // Reload saved articles whenever the screen comes into focus
+  useFocusEffect(useCallback(() => {
+    if (activeTab === 'saved') loadSavedArticles();
+  }, [activeTab]));
 
   const loadSavedArticles = async () => {
     setSavedLoading(true);
