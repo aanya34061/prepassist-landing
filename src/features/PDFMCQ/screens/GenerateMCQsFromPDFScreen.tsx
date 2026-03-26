@@ -281,8 +281,8 @@ const OCR_API_URL = 'https://api.ocr.space/parse/image';
 /** Extract text from PDF using pdfjs-dist (web) — no page limit */
 async function extractTextFromPDFWeb(base64Data: string): Promise<string> {
     console.log('[PDF-MCQ] Extracting text via pdfjs-dist (web, no page limit)...');
-    const pdfjsLib = require('pdfjs-dist');
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+    const pdfjsLib = require('pdfjs-dist/legacy/build/pdf');
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
 
     const binaryStr = atob(base64Data);
     const bytes = new Uint8Array(binaryStr.length);
