@@ -25,7 +25,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SmartTextInput } from '../components/SmartTextInput';
 import * as WebBrowser from 'expo-web-browser';
 import { useFocusEffect } from '@react-navigation/native';
-import { getSavedArticles, deleteSavedArticle, saveArticleDirect } from '../services/savedArticlesService';
+import { getSavedArticles, deleteSavedArticle } from '../services/savedArticlesService';
 import { supabase } from '../lib/supabase';
 
 const FILTERS = {
@@ -97,7 +97,6 @@ export default function NewsFeedScreen({ navigation, route }) {
   const [sortOrder, setSortOrder] = useState('desc'); // 'desc' or 'asc'
   const [activeTab, setActiveTab] = useState('feed'); // 'feed' or 'saved'
   const [savedArticles, setSavedArticles] = useState([]);
-  const [savedArticleUrls, setSavedArticleUrls] = useState(new Set());
   const [savedLoading, setSavedLoading] = useState(false);
   const [availableDates, setAvailableDates] = useState({});
   const [showArchive, setShowArchive] = useState(false);
@@ -270,14 +269,13 @@ export default function NewsFeedScreen({ navigation, route }) {
 
   // Reload saved articles whenever the screen comes into focus
   useFocusEffect(useCallback(() => {
-    loadSavedArticles();
-  }, []));
+    if (activeTab === 'saved') loadSavedArticles();
+  }, [activeTab]));
 
   const loadSavedArticles = async () => {
     setSavedLoading(true);
     const articles = await getSavedArticles();
     setSavedArticles(articles);
-    setSavedArticleUrls(new Set(articles.map(a => a.url)));
     setSavedLoading(false);
   };
 
@@ -291,23 +289,6 @@ export default function NewsFeedScreen({ navigation, route }) {
         }
       },
     ]);
-  };
-
-  const handleSaveArticle = async (article) => {
-    const url = article.sourceUrl || article.url || '';
-    if (!url) return;
-    const result = await saveArticleDirect({
-      url,
-      title: article.title,
-      content: article.summary || '',
-      domain: article.gsPaper === 'TH' ? 'thehindu.com' : article.gsPaper === 'HT' ? 'hindustantimes.com' : '',
-    });
-    if (result.article && !result.isDuplicate) {
-      setSavedArticleUrls(prev => new Set(prev).add(url));
-      Alert.alert('Saved', 'Article saved to your collection.');
-    } else if (result.isDuplicate) {
-      Alert.alert('Already Saved', 'This article is already in your saved list.');
-    }
   };
 
   const handleRefresh = () => {
@@ -419,28 +400,16 @@ export default function NewsFeedScreen({ navigation, route }) {
             </Text>
           ) : null}
 
-          {/* Byline + date + save */}
+          {/* Byline + date */}
           <View style={styles.cardFooter}>
             {item.author ? (
               <Text style={[styles.cardAuthorText, { color: isDark ? 'rgba(255,255,255,0.40)' : '#7A8A91' }]}>
                 {item.author}
               </Text>
             ) : <View />}
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-              <Text style={[styles.cardDateText, { color: isDark ? 'rgba(255,255,255,0.35)' : '#9E9E9E' }]}>
-                {formatDate(item.publishedDate || item.createdAt)}
-              </Text>
-              <TouchableOpacity
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                onPress={(e) => { e.stopPropagation(); handleSaveArticle(item); }}
-              >
-                <Ionicons
-                  name={savedArticleUrls.has(item.sourceUrl || item.url || '') ? 'bookmark' : 'bookmark-outline'}
-                  size={18}
-                  color={savedArticleUrls.has(item.sourceUrl || item.url || '') ? '#2A7DEB' : (isDark ? 'rgba(255,255,255,0.40)' : '#7A8A91')}
-                />
-              </TouchableOpacity>
-            </View>
+            <Text style={[styles.cardDateText, { color: isDark ? 'rgba(255,255,255,0.35)' : '#9E9E9E' }]}>
+              {formatDate(item.publishedDate || item.createdAt)}
+            </Text>
           </View>
 
           {/* Source badge */}

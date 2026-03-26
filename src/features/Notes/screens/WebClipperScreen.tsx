@@ -26,6 +26,7 @@ import { createNote, getAllNotes, saveScrapedLink, getAllTags, LocalTag, NoteBlo
 import { useAuth } from '../../../context/AuthContext';
 import useCredits from '../../../hooks/useCredits';
 import { syncNoteToFirebase } from '../../../services/firebaseNotesSync';
+import { saveArticleDirect } from '../../../services/savedArticlesService';
 
 interface WebClipperScreenProps {
     navigation: any;
@@ -185,6 +186,14 @@ export const WebClipperScreen: React.FC<WebClipperScreenProps> = ({ navigation, 
             if (savedNote && user?.id) {
                 syncNoteToFirebase(user.id, savedNote);
             }
+
+            // Also save to Saved Articles so it appears in the Saved Articles page
+            await saveArticleDirect({
+                url: scrapedContent.url,
+                title: customTitle || scrapedContent.title,
+                content: plainText,
+                domain: scrapedContent.url ? new URL(scrapedContent.url).hostname.replace('www.', '') : '',
+            });
 
             if (Platform.OS === 'web') {
                 window.alert(`Note Saved! ${scrapedContent.contentBlocks.length} content blocks extracted and saved.`);
