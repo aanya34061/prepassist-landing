@@ -274,48 +274,63 @@ function downloadFile(content: string, filename: string, mimeType: string): void
     URL.revokeObjectURL(url);
 }
 
-// ===================== OCR TEXT EXTRACTION (Fallback) =====================
+// ===================== PDF TEXT EXTRACTION =====================
 const OCR_API_KEY = 'K85553321788957';
 const OCR_API_URL = 'https://api.ocr.space/parse/image';
 
-async function extractTextFromPDF(base64Data: string, mimeType: string, fileName: string): Promise<string> {
+/** Extract text from PDF using pdfjs-dist (web) — no page limit */
+async function extractTextFromPDFWeb(base64Data: string): Promise<string> {
+    console.log('[PDF-MCQ] Extracting text via pdfjs-dist (web, no page limit)...');
+    const pdfjsLib = require('pdfjs-dist');
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+
+    const binaryStr = atob(base64Data);
+    const bytes = new Uint8Array(binaryStr.length);
+    for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+
+    const pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
+    console.log(`[PDF-MCQ] PDF has ${pdf.numPages} pages`);
+    let fullText = '';
+    for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        const pageText = content.items.map((item: any) => item.str).join(' ');
+        fullText += pageText + '\n\n';
+    }
+    console.log(`[PDF-MCQ] pdfjs extracted ${fullText.length} chars from ${pdf.numPages} pages`);
+    return fullText.trim();
+}
+
+/** Extract text from PDF using OCR.space API (native fallback) */
+async function extractTextFromPDFNative(base64Data: string, mimeType: string): Promise<string> {
     console.log('[PDF-MCQ] Extracting text via OCR API...');
+    const formData = new FormData();
+    formData.append('apikey', OCR_API_KEY);
+    formData.append('base64Image', `data:${mimeType};base64,${base64Data}`);
+    formData.append('language', 'eng');
+    formData.append('isOverlayRequired', 'false');
+    formData.append('filetype', mimeType === 'application/pdf' ? 'PDF' : 'auto');
+    formData.append('detectOrientation', 'true');
+    formData.append('scale', 'true');
+    formData.append('OCREngine', '2');
 
+    const response = await fetch(OCR_API_URL, { method: 'POST', body: formData });
+    if (!response.ok) throw new Error(`OCR API error: ${response.status}`);
+    const data = await response.json();
+    if (data.IsErroredOnProcessing) throw new Error(data.ErrorMessage?.[0] || 'OCR processing failed');
+    const text = data.ParsedResults?.map((r: any) => r.ParsedText).join('\n').trim() || '';
+    console.log(`[PDF-MCQ] OCR extracted ${text.length} chars`);
+    return text;
+}
+
+async function extractTextFromPDF(base64Data: string, mimeType: string, fileName: string): Promise<string> {
     try {
-        const formData = new FormData();
-        formData.append('apikey', OCR_API_KEY);
-        formData.append('base64Image', `data:${mimeType};base64,${base64Data}`);
-        formData.append('language', 'eng');
-        formData.append('isOverlayRequired', 'false');
-        formData.append('filetype', mimeType === 'application/pdf' ? 'PDF' : 'auto');
-        formData.append('detectOrientation', 'true');
-        formData.append('scale', 'true');
-        formData.append('OCREngine', '2');
-
-        const response = await fetch(OCR_API_URL, {
-            method: 'POST',
-            body: formData,
-        });
-
-        if (!response.ok) {
-            throw new Error(`OCR API error: ${response.status}`);
+        if (Platform.OS === 'web' && mimeType === 'application/pdf') {
+            return await extractTextFromPDFWeb(base64Data);
         }
-
-        const data = await response.json();
-
-        if (data.IsErroredOnProcessing) {
-            throw new Error(data.ErrorMessage?.[0] || 'OCR processing failed');
-        }
-
-        const text = data.ParsedResults
-            ?.map((r: any) => r.ParsedText)
-            .join('\n')
-            .trim() || '';
-
-        console.log(`[PDF-MCQ] OCR extracted ${text.length} chars`);
-        return text;
+        return await extractTextFromPDFNative(base64Data, mimeType);
     } catch (err: any) {
-        console.error('[PDF-MCQ] OCR extraction error:', err);
+        console.error('[PDF-MCQ] Extraction error:', err);
         throw new Error('Failed to extract text from PDF: ' + err.message);
     }
 }
