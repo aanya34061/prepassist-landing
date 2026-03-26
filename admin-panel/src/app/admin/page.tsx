@@ -227,20 +227,6 @@ export default function AdminLoginPage() {
                         </p>
                     </form>
 
-                    {/* === SKIP LOGIN - Remove this block when no longer needed === */}
-                    <div className="mt-6 pt-6 border-t border-gray-200">
-                        <button
-                            onClick={() => {
-                                localStorage.setItem('sb-access-token', 'skip-login-dev-token');
-                                router.push('/dashboard');
-                            }}
-                            className="w-full py-3 rounded-xl font-medium text-gray-500 bg-gray-100 hover:bg-gray-200 transition-colors text-sm"
-                        >
-                            Skip Login (Dev Mode)
-                        </button>
-                        <p className="text-center text-xs text-gray-400 mt-2">Temporary — bypasses authentication</p>
-                    </div>
-                    {/* === END SKIP LOGIN === */}
                 </div>
             </div>
         </div>
