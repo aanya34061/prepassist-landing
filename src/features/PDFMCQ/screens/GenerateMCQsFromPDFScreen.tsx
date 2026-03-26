@@ -278,27 +278,36 @@ function downloadFile(content: string, filename: string, mimeType: string): void
 const OCR_API_KEY = 'K85553321788957';
 const OCR_API_URL = 'https://api.ocr.space/parse/image';
 
-/** Extract text from PDF using pdfjs-dist (web) — no page limit */
+/** Extract text from PDF using Gemini API (web) — no page limit */
 async function extractTextFromPDFWeb(base64Data: string): Promise<string> {
-    console.log('[PDF-MCQ] Extracting text via pdfjs-dist (web, no page limit)...');
-    const pdfjsLib = require('pdfjs-dist/legacy/build/pdf');
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
+    console.log('[PDF-MCQ] Extracting text via Gemini API (no page limit)...');
 
-    const binaryStr = atob(base64Data);
-    const bytes = new Uint8Array(binaryStr.length);
-    for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+    const response = await fetch(CONFIG.OPENROUTER_URL, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${CONFIG.OPENROUTER_API_KEY}`,
+        },
+        body: JSON.stringify({
+            model: CONFIG.AI_MODEL,
+            messages: [{
+                role: 'user',
+                content: [
+                    { type: 'text', text: 'Extract ALL text content from this PDF document. Return ONLY the raw text, preserving paragraphs and structure. Do not add any commentary or formatting — just the exact text from the document.' },
+                    { type: 'image_url', image_url: { url: `data:application/pdf;base64,${base64Data}` } },
+                ],
+            }],
+            max_tokens: 16000,
+            temperature: 0,
+        }),
+    });
 
-    const pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
-    console.log(`[PDF-MCQ] PDF has ${pdf.numPages} pages`);
-    let fullText = '';
-    for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i);
-        const content = await page.getTextContent();
-        const pageText = content.items.map((item: any) => item.str).join(' ');
-        fullText += pageText + '\n\n';
-    }
-    console.log(`[PDF-MCQ] pdfjs extracted ${fullText.length} chars from ${pdf.numPages} pages`);
-    return fullText.trim();
+    if (!response.ok) throw new Error(`Gemini API error: ${response.status}`);
+    const result = await response.json();
+    const text = result?.choices?.[0]?.message?.content || '';
+    console.log(`[PDF-MCQ] Gemini extracted ${text.length} chars`);
+    if (!text) throw new Error('Gemini returned empty text');
+    return text;
 }
 
 /** Extract text from PDF using OCR.space API (native fallback) */
