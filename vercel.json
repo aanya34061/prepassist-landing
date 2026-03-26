@@ -1,6 +1,6 @@
-{
+{                                                                                
       "buildCommand": "npx expo export --platform web",                            
-      "outputDirectory": "dist",                                                 
+      "outputDirectory": "dist",
       "installCommand": "npm install",
       "framework": null,
       "public": true,
@@ -12,33 +12,29 @@
           },
           {
               "source": "/admin",
-              "destination":
-  "https://prepassist-dashboard-git-main-vamsis-projects-4d71922c.vercel.app/"
+              "destination": "https://prepassist-dashboard.vercel.app/"
           },
           {
               "source": "/dashboard",
-              "destination": "https://prepassist-dashboard-git-main-vamsis-projects
-  -4d71922c.vercel.app/dashboard"
+              "destination": "https://prepassist-dashboard.vercel.app/dashboard"
           },
           {
               "source": "/dashboard/:path*",
-              "destination": "https://prepassist-dashboard-git-main-vamsis-projects
-  -4d71922c.vercel.app/dashboard/:path*"
+              "destination":
+  "https://prepassist-dashboard.vercel.app/dashboard/:path*"
           },
           {
               "source": "/_next/:path*",
-              "destination": "https://prepassist-dashboard-git-main-vamsis-projects
-  -4d71922c.vercel.app/_next/:path*"
+              "destination": "https://prepassist-dashboard.vercel.app/_next/:path*"
           },
           {
               "source": "/api/:path*",
-              "destination": "https://prepassist-dashboard-git-main-vamsis-projects
-  -4d71922c.vercel.app/api/:path*"
+              "destination": "https://prepassist-dashboard.vercel.app/api/:path*"
           },
           {
               "source": "/prepassist-logo.png",
-              "destination": "https://prepassist-dashboard-git-main-vamsis-projects
-  -4d71922c.vercel.app/prepassist-logo.png"
+              "destination":
+  "https://prepassist-dashboard.vercel.app/prepassist-logo.png"
           },
           {
               "source": "/(.*)",
@@ -65,6 +61,4 @@
               ]
           }
       ]
-  } 
-
-
+  }
