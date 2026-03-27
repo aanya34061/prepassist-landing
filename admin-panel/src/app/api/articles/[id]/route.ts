@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminDb } from '@/lib/firebase-admin';
 import { verifyAuth } from '@/lib/auth';
+import { syncArticleUpdate, syncArticleDelete } from '@/lib/supabase-sync';
 
 export async function GET(
     request: NextRequest,
@@ -70,6 +71,7 @@ export async function PUT(
         if (isPublished !== undefined) updateData.isPublished = isPublished;
 
         await docRef.update(updateData);
+        syncArticleUpdate(articleId, updateData);
 
         // Fetch the updated document to return
         const updatedSnap = await docRef.get();
@@ -115,6 +117,7 @@ export async function DELETE(
         // Delete the article document itself
         batch.delete(docRef);
         await batch.commit();
+        syncArticleDelete(articleId);
 
         console.log(`Article "${articleData?.title}" was deleted`);
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminDb } from '@/lib/firebase-admin';
 import { verifyAuth } from '@/lib/auth';
+import { syncArticleTogglePublish } from '@/lib/supabase-sync';
 
 export async function PATCH(
     request: NextRequest,
@@ -28,6 +29,7 @@ export async function PATCH(
             isPublished: newIsPublished,
             updatedAt: new Date(),
         });
+        syncArticleTogglePublish(articleId, newIsPublished);
 
         // Fetch the updated document to return
         const updatedSnap = await docRef.get();

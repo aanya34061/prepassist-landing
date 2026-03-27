@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminDb } from '@/lib/firebase-admin';
 import { verifyAuth } from '@/lib/auth';
+import { syncArticleCreate } from '@/lib/supabase-sync';
 
 export async function GET(request: NextRequest) {
     const user = await verifyAuth(request);
@@ -108,6 +109,7 @@ export async function POST(request: NextRequest) {
         };
 
         const docRef = await db.collection('articles').add(articleData);
+        syncArticleCreate(docRef.id, articleData);
 
         return NextResponse.json({
             article: { id: docRef.id, ...articleData },
