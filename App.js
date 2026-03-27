@@ -125,7 +125,7 @@ const LoadingScreen = () => (
 const AuthNavigator = () => {
   return (
     <Stack.Navigator
-      initialRouteName="Landing"
+      initialRouteName={Platform.OS === 'web' ? 'Landing' : 'Login'}
       screenOptions={{
         headerShown: false,
         animation: 'fade',
@@ -223,17 +223,6 @@ const RootNavigator = () => {
 
   if (isLoading && !forceReady) {
     return <LoadingScreen />;
-  }
-
-  // On web: always show Landing first, then user navigates to Login → Main app
-  // On native: skip landing if already logged in
-  if (Platform.OS === 'web') {
-    return (
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="Auth" component={AuthNavigator} options={{ animation: 'fade' }} />
-        <Stack.Screen name="Main" component={MainNavigator} options={{ animation: 'fade' }} />
-      </Stack.Navigator>
-    );
   }
 
   return (
