@@ -95,16 +95,16 @@ export default function SettingsScreen({ navigation }) {
   const handleSignOut = async () => {
     if (Platform.OS === 'web') {
       if (window.confirm('Are you sure you want to sign out?')) {
-        try { setIsSigningOut(true); await signOut(); }
-        catch { window.alert('Failed to sign out. Please try again.'); setIsSigningOut(false); }
+        try { setIsSigningOut(true); await signOut(); } catch { /* ignore */ }
+        setIsSigningOut(false);
       }
       return;
     }
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Sign Out', style: 'destructive', onPress: async () => {
-        try { setIsSigningOut(true); await signOut(); }
-        catch { Alert.alert('Error', 'Failed to sign out. Please try again.'); setIsSigningOut(false); }
+        try { setIsSigningOut(true); await signOut(); } catch { /* ignore */ }
+        setIsSigningOut(false);
       }},
     ]);
   };
