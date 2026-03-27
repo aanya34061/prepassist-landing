@@ -4,14 +4,17 @@
     "installCommand": "npm install",
     "framework": null,
     "public": true,
+    "redirects": [
+        {
+            "source": "/admin",
+            "destination": "/dashboard",
+            "permanent": false
+        }
+    ],
     "rewrites": [
         {
             "source": "/pricing",
             "destination": "https://prepassist-landing-vamsis-projects-4d71922c.vercel.app/pricing"
-        },
-        {
-            "source": "/admin",
-            "destination": "https://prepassist-dashboard.vercel.app/dashboard"
         },
         {
             "source": "/dashboard",
