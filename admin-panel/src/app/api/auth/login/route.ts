@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyCredentials } from '@/lib/auth';
-import { getAdminAuth } from '@/lib/firebase-admin';
+import { verifyCredentials, createToken } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
     try {
@@ -26,21 +25,17 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Create a custom token for the admin user
-        const auth = getAdminAuth();
-        const customToken = await auth.createCustomToken(user.id, {
-            role: user.role,
-            email: user.email,
-        });
+        // Create JWT token
+        const token = createToken(user);
 
         // Create response with user data and token
         const response = NextResponse.json({
-            token: customToken,
+            token,
             user,
         });
 
         // Set cookie for session management
-        response.cookies.set('fb-access-token', customToken, {
+        response.cookies.set('fb-access-token', token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',

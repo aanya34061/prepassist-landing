@@ -1,6 +1,9 @@
 import { NextRequest } from 'next/server';
-import { getAdminAuth, getAdminDb } from './firebase-admin';
+import { getAdminDb } from './firebase-admin';
 import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+
+const JWT_SECRET = process.env.JWT_SECRET || process.env.FIREBASE_SERVICE_ACCOUNT_KEY?.slice(0, 64) || 'admin-panel-secret-key';
 
 export interface AdminUser {
     id: string;
@@ -47,26 +50,26 @@ export async function verifyCredentials(email: string, password: string): Promis
     }
 }
 
-// Verify Firebase ID token
-export async function verifyToken(idToken: string): Promise<AdminUser | null> {
+// Create a JWT token for admin user
+export function createToken(user: AdminUser): string {
+    return jwt.sign(
+        { id: user.id, email: user.email, name: user.name, role: user.role },
+        JWT_SECRET,
+        { expiresIn: '7d' }
+    );
+}
+
+// Verify JWT token
+export async function verifyToken(token: string): Promise<AdminUser | null> {
     try {
-        console.log('Verifying Firebase ID token for admin panel...');
-        const auth = getAdminAuth();
-
-        const decodedToken = await auth.verifyIdToken(idToken);
-
-        if (!decodedToken || !decodedToken.uid) {
-            console.log('Token verification failed: no uid');
-            return null;
-        }
-
-        console.log('Token verified successfully for user:', decodedToken.email);
+        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        if (!decoded || !decoded.id) return null;
 
         return {
-            id: decodedToken.uid,
-            email: decodedToken.email || '',
-            name: decodedToken.name || decodedToken.email?.split('@')[0] || 'Admin',
-            role: decodedToken.role || 'admin',
+            id: decoded.id,
+            email: decoded.email || '',
+            name: decoded.name || 'Admin',
+            role: decoded.role || 'admin',
         };
     } catch (error) {
         console.error('Error verifying token:', error);
