@@ -139,9 +139,9 @@ export async function syncArticleMCQs(
 
 // --------------- Question Sets ---------------
 
-export async function syncQuestionSetCreate(firestoreId: string, data: Record<string, any>): Promise<{ ok: boolean; error?: string }> {
+export async function syncQuestionSetCreate(firestoreId: string, data: Record<string, any>) {
   const sb = getSupabase();
-  if (!sb) return { ok: false, error: 'supabase client is null' };
+  if (!sb) return;
 
   try {
     const row = {
@@ -155,15 +155,10 @@ export async function syncQuestionSetCreate(firestoreId: string, data: Record<st
     };
 
     const { error } = await sb.from('question_sets').insert(row);
-    if (error) {
-      console.error('Supabase sync (question-set create) failed:', error.message);
-      return { ok: false, error: error.message };
-    }
-    console.log(`Supabase sync: question set ${firestoreId} created`);
-    return { ok: true };
-  } catch (err: any) {
+    if (error) console.error('Supabase sync (question-set create) failed:', error.message);
+    else console.log(`Supabase sync: question set ${firestoreId} created`);
+  } catch (err) {
     console.error('Supabase sync (question-set create) exception:', err);
-    return { ok: false, error: err?.message || String(err) };
   }
 }
 
