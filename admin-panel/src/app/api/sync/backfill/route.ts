@@ -133,6 +133,31 @@ export async function POST(request: NextRequest) {
         results.errors.push(`question_sets batch: ${err.message}`);
     }
 
+    // ---- Clean up orphaned Supabase rows not in Firestore ----
+    try {
+        const firestoreSetIds = (await db.collection('question_sets').get()).docs.map(d => d.id);
+        const { data: supabaseSets } = await sb.from('question_sets').select('id, firestore_id');
+        if (supabaseSets) {
+            for (const row of supabaseSets) {
+                if (row.firestore_id && !firestoreSetIds.includes(row.firestore_id)) {
+                    await sb.from('question_sets').delete().eq('id', row.id);
+                }
+            }
+        }
+
+        const firestoreArticleIds = (await db.collection('articles').get()).docs.map(d => d.id);
+        const { data: supabaseArticles } = await sb.from('articles').select('id, firestore_id');
+        if (supabaseArticles) {
+            for (const row of supabaseArticles) {
+                if (row.firestore_id && !firestoreArticleIds.includes(row.firestore_id)) {
+                    await sb.from('articles').delete().eq('id', row.id);
+                }
+            }
+        }
+    } catch (err: any) {
+        results.errors.push(`cleanup: ${err.message}`);
+    }
+
     return NextResponse.json({
         message: 'Backfill complete',
         synced: results,
