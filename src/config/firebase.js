@@ -2,15 +2,16 @@ import { initializeApp, getApps } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
-// Firebase configuration for "test-7ca86" project
-// Values sourced from: android/app/google-services.json
+// Firebase configuration for "prepassist-68ef1" project
+// Must match the admin panel's Firebase project
 const firebaseConfig = {
-  apiKey: 'AIzaSyDZmmcDQSMH1adae7D7tJVE7yo_z3YCMrc',
-  authDomain: 'test-7ca86.firebaseapp.com',
-  projectId: 'test-7ca86',
-  storageBucket: 'test-7ca86.firebasestorage.app',
-  messagingSenderId: '78687357578',
-  appId: '1:78687357578:android:5ae96274937abad6ebbb73',
+  apiKey: 'AIzaSyA7xzZKXvzspO5HmQsFlHfu3MKi_VoMlGc',
+  authDomain: 'prepassist-68ef1.firebaseapp.com',
+  projectId: 'prepassist-68ef1',
+  storageBucket: 'prepassist-68ef1.firebasestorage.app',
+  messagingSenderId: '102154778519',
+  appId: '1:102154778519:web:249ffb880d001958f2b6d2',
+  measurementId: 'G-FLQBFFC3MX',
 };
 
 // Prevent re-initialising the app on hot-reloads
