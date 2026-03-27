@@ -163,16 +163,14 @@ export const AuthProvider = ({ children }) => {
         try {
           const userData = JSON.parse(storedUser);
 
-          // If it's a Supabase user but no active session, clear it
-          if (userData.provider === 'supabase' && !session) {
-            console.log('[AuthContext] Supabase user stored but no session, clearing');
-            await clearUserData();
-          } else {
-            setUser(userData);
-            setIsGuestMode(userData.isGuest || false);
-            isGuestModeRef.current = userData.isGuest || false;
-            console.log('[AuthContext] User restored from storage:', userData.email || userData.name);
-          }
+          // Trust stored user data on reload. If the Supabase session is truly
+          // expired, the onAuthStateChange listener will fire SIGNED_OUT and
+          // clear the user. This prevents the flash-to-landing-page on web
+          // where getSession() may return null before the session loads.
+          setUser(userData);
+          setIsGuestMode(userData.isGuest || false);
+          isGuestModeRef.current = userData.isGuest || false;
+          console.log('[AuthContext] User restored from storage:', userData.email || userData.name);
         } catch (e) {
           console.error('[AuthContext] Error parsing stored user:', e);
         }
