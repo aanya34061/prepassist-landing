@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
         };
 
         const docRef = await db.collection('articles').add(articleData);
-        syncArticleCreate(docRef.id, articleData);
+        await syncArticleCreate(docRef.id, articleData);
 
         return NextResponse.json({
             article: { id: docRef.id, ...articleData },

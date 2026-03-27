@@ -29,7 +29,7 @@ export async function PATCH(
             isPublished: newIsPublished,
             updatedAt: new Date(),
         });
-        syncArticleTogglePublish(articleId, newIsPublished);
+        await syncArticleTogglePublish(articleId, newIsPublished);
 
         // Fetch the updated document to return
         const updatedSnap = await docRef.get();

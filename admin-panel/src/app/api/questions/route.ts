@@ -50,7 +50,7 @@ export async function POST(req: Request) {
             ...questionData,
         };
 
-        syncPracticeQuestionCreate(questionSetId, {
+        await syncPracticeQuestionCreate(questionSetId, {
             question, optionA, optionB, optionC, optionD, correctAnswer, explanation,
         });
 

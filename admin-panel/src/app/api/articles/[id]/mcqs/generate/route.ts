@@ -318,7 +318,7 @@ export async function POST(
         }
 
         console.log(`Successfully generated and saved ${savedMCQs.length} MCQs for article ${articleId}`);
-        syncArticleMCQs(articleId, generatedMCQs);
+        await syncArticleMCQs(articleId, generatedMCQs);
 
         return NextResponse.json({
             success: true,
