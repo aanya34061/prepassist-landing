@@ -60,13 +60,13 @@ export async function PUT(
         await userRef.update(updateData);
 
         const updatedDoc = await userRef.get();
-        const updatedUser = { id: updatedDoc.id, ...updatedDoc.data() };
+        const updatedUser = { id: updatedDoc.id, ...updatedDoc.data() } as any;
 
         await db.collection('activity_logs').add({
             action: 'user_updated',
             entityType: 'user',
             entityId: id,
-            description: `User "${updatedUser.name || name}" was updated`,
+            description: `User "${updatedUser.name || (body as any).name}" was updated`,
             createdAt: new Date().toISOString(),
         });
 
