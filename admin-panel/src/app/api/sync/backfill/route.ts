@@ -133,6 +133,48 @@ export async function POST(request: NextRequest) {
         results.errors.push(`question_sets batch: ${err.message}`);
     }
 
+    // ---- Reverse sync: Supabase articles → Firestore (so dashboard shows all) ----
+    try {
+        const firestoreArticleIds = (await db.collection('articles').get()).docs.map(d => d.id);
+        const { data: allSupabaseArticles } = await sb.from('articles').select('*');
+        let reverseSynced = 0;
+
+        if (allSupabaseArticles) {
+            for (const row of allSupabaseArticles) {
+                // Skip if already in Firestore (matched by firestore_id)
+                if (row.firestore_id && firestoreArticleIds.includes(row.firestore_id)) continue;
+
+                // Create in Firestore
+                const articleData: Record<string, any> = {
+                    title: row.title || '',
+                    author: row.author || null,
+                    sourceUrl: row.source_url || null,
+                    publishedDate: row.published_date ? new Date(row.published_date) : null,
+                    summary: row.summary || null,
+                    metaDescription: row.meta_description || null,
+                    content: row.content || [],
+                    images: row.images || [],
+                    gsPaper: row.gs_paper || null,
+                    subject: row.subject || null,
+                    tags: row.tags || [],
+                    isPublished: row.is_published || false,
+                    scrapedAt: row.scraped_at ? new Date(row.scraped_at) : new Date(),
+                    createdAt: row.created_at ? new Date(row.created_at) : new Date(),
+                    updatedAt: row.updated_at ? new Date(row.updated_at) : new Date(),
+                };
+
+                const docRef = await db.collection('articles').add(articleData);
+
+                // Update Supabase row with the new firestore_id
+                await sb.from('articles').update({ firestore_id: docRef.id }).eq('id', row.id);
+                reverseSynced++;
+            }
+        }
+        (results as any).reverseArticles = reverseSynced;
+    } catch (err: any) {
+        results.errors.push(`reverse sync: ${err.message}`);
+    }
+
     // ---- Clean up orphaned Supabase rows not in Firestore ----
     try {
         const firestoreSetIds = (await db.collection('question_sets').get()).docs.map(d => d.id);
