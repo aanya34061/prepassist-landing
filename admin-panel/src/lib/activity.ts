@@ -1,23 +1,23 @@
-import { db } from './db';
-import { activityLogs } from './db/schema';
+import { getAdminDb } from './firebase-admin';
 
 export async function logActivity(
     action: string,
     entityType: string,
-    entityId: number | null,
+    entityId: string | number | null,
     description: string,
     metadata?: Record<string, any>
 ) {
     try {
-        await db.insert(activityLogs).values({
+        const db = getAdminDb();
+        await db.collection('activity_logs').add({
             action,
             entityType,
             entityId,
             description,
-            metadata,
+            metadata: metadata || null,
+            createdAt: new Date().toISOString(),
         });
     } catch (error) {
         console.error('Activity log error:', error);
     }
 }
-
