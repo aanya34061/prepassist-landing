@@ -6,6 +6,10 @@
     "public": true,
     "rewrites": [
         {
+            "source": "/",
+            "destination": "https://prepassist-landing-vamsis-projects-4d71922c.vercel.app/"
+        },
+        {
             "source": "/pricing",
             "destination": "https://prepassist-landing-vamsis-projects-4d71922c.vercel.app/pricing"
         },
