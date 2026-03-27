@@ -67,6 +67,7 @@ export const AuthProvider = ({ children }) => {
   // Refs to avoid stale closures in the auth listener
   const isGuestModeRef = useRef(false);
   const isSigningInRef = useRef(false);
+  const isInitializedRef = useRef(false);
 
   // Check for existing user session on app launch
   useEffect(() => {
@@ -82,11 +83,18 @@ export const AuthProvider = ({ children }) => {
         return;
       }
 
-      if (event === 'SIGNED_IN' && session?.user) {
+      if (event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') {
+        isInitializedRef.current = true;
+        if (session?.user) {
+          await handleSupabaseUser(session.user, session);
+        }
+      } else if (event === 'SIGNED_IN' && session?.user) {
+        isInitializedRef.current = true;
         await handleSupabaseUser(session.user, session);
       } else if (event === 'SIGNED_OUT') {
-        // Only clear if user is not in guest mode (use ref to avoid stale closure)
-        if (!isGuestModeRef.current) {
+        // Only clear after initial session is resolved to prevent race
+        // condition where SIGNED_OUT fires before the session loads
+        if (isInitializedRef.current && !isGuestModeRef.current) {
           await clearUserData();
         }
       }
