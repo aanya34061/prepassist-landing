@@ -73,7 +73,7 @@ export async function PUT(
 
         // Fetch the updated document to return
         const updatedSnap = await docRef.get();
-        const updatedArticle = { id: updatedSnap.id, ...updatedSnap.data() };
+        const updatedArticle = { id: updatedSnap.id, ...updatedSnap.data() } as any;
 
         console.log(`Article "${updatedArticle.title}" was updated`);
 
