@@ -3,6 +3,7 @@ import { getAdminDb } from '@/lib/firebase-admin';
 import { verifyAuth } from '@/lib/auth';
 
 import { OPENROUTER_API_KEY } from '@/lib/secure-config'; // Previously hardcoded key replaced
+import { syncArticleMCQs } from '@/lib/supabase-sync';
 
 // Extract text content from article for RAG
 function extractTextContent(contentBlocks: Array<{ type: string; content: string;[key: string]: any }>): string {
@@ -317,6 +318,7 @@ export async function POST(
         }
 
         console.log(`Successfully generated and saved ${savedMCQs.length} MCQs for article ${articleId}`);
+        syncArticleMCQs(articleId, generatedMCQs);
 
         return NextResponse.json({
             success: true,

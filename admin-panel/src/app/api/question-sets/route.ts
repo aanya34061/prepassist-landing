@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAdminDb } from '@/lib/firebase-admin';
 import { verifyAuth } from '@/lib/auth';
+import { syncQuestionSetCreate } from '@/lib/supabase-sync';
 
 export async function GET() {
     try {
@@ -46,6 +47,7 @@ export async function POST(req: Request) {
         };
 
         const docRef = await db.collection('question_sets').add(newSetData);
+        syncQuestionSetCreate(docRef.id, newSetData);
 
         return NextResponse.json({
             id: docRef.id,

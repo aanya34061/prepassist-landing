@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAdminDb } from '@/lib/firebase-admin';
 import { verifyAuth } from '@/lib/auth';
+import { syncQuestionSetDelete, syncQuestionSetTogglePublish } from '@/lib/supabase-sync';
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
     try {
@@ -64,6 +65,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
         batch.delete(db.collection('question_sets').doc(id));
 
         await batch.commit();
+        syncQuestionSetDelete(id);
 
         return NextResponse.json({ success: true });
     } catch (error: any) {
@@ -81,6 +83,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
             isPublished: body.isPublished,
             updatedAt: new Date().toISOString(),
         });
+        syncQuestionSetTogglePublish(id, body.isPublished);
 
         return NextResponse.json({ success: true });
     } catch (error: any) {

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAdminDb } from '@/lib/firebase-admin';
 import { verifyAuth } from '@/lib/auth';
+import { syncPracticeQuestionCreate } from '@/lib/supabase-sync';
 
 export async function POST(req: Request) {
     try {
@@ -48,6 +49,10 @@ export async function POST(req: Request) {
             id: docRef.id,
             ...questionData,
         };
+
+        syncPracticeQuestionCreate(questionSetId, {
+            question, optionA, optionB, optionC, optionD, correctAnswer, explanation,
+        });
 
         return NextResponse.json({ success: true, data: transformedResult });
 

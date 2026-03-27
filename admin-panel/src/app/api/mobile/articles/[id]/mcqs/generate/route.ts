@@ -4,6 +4,7 @@ import { getAdminDb } from '@/lib/firebase-admin';
 import { corsHeaders } from '../../../../_cors';
 
 import { OPENROUTER_API_KEY } from '@/lib/secure-config';
+import { syncArticleMCQs } from '@/lib/supabase-sync';
 
 if (!OPENROUTER_API_KEY) {
     console.error('OPENROUTER_API_KEY is not defined in environment variables');
@@ -431,6 +432,7 @@ export async function POST(
         }
 
         console.log(`[MCQs Generate POST] Successfully generated and saved ${savedMCQs.length} MCQs for article ${articleId}`);
+        syncArticleMCQs(articleId, generatedMCQs);
 
         return NextResponse.json({
             success: true,
