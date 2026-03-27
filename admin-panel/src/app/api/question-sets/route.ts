@@ -47,11 +47,12 @@ export async function POST(req: Request) {
         };
 
         const docRef = await db.collection('question_sets').add(newSetData);
-        await syncQuestionSetCreate(docRef.id, newSetData);
+        const syncResult = await syncQuestionSetCreate(docRef.id, newSetData);
 
         return NextResponse.json({
             id: docRef.id,
             ...newSetData,
+            _syncDebug: syncResult,
         });
     } catch (error: any) {
         console.error('Create question set error:', error);
