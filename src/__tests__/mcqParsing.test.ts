@@ -4,6 +4,7 @@
  */
 
 import { MCQ, generateMCQsFromText } from '../utils/mcqAI';
+import { ACTIVE_MODELS } from '../config/aiModels';
 
 // Mock fetch for API calls
 global.fetch = jest.fn();
@@ -58,7 +59,7 @@ Explanation: Articles 12-35 deal with fundamental rights.`
             expect(callArgs[0]).toBe('https://openrouter.ai/api/v1/chat/completions');
 
             const body = JSON.parse(callArgs[1].body);
-            expect(body.model).toBe('anthropic/claude-sonnet-4-5-20250514');
+            expect(body.model).toBe(ACTIVE_MODELS.MCQ_GENERATION);
         });
 
         it('should include proper OpenRouter headers', async () => {

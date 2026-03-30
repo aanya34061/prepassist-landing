@@ -16,6 +16,7 @@
 const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config();
 
+
 const PERPLEXITY_API_KEY = process.env.PERPLEXITY_API_KEY || process.env.EXPO_PUBLIC_PERPLEXITY_API_KEY;
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const SUPABASE_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;

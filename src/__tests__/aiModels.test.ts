@@ -15,7 +15,7 @@ describe('AI Models Configuration', () => {
     // ===== Claude Model Definition =====
     describe('AI_MODELS', () => {
         it('should have Claude Sonnet pointing to latest model', () => {
-            expect(AI_MODELS.CLAUDE_SONNET).toBe('anthropic/claude-sonnet-4-5-20250514');
+            expect(AI_MODELS.CLAUDE_SONNET).toBe('anthropic/claude-sonnet-4.5');
         });
 
         it('should have Claude Haiku defined', () => {
@@ -37,14 +37,14 @@ describe('AI Models Configuration', () => {
 
     // ===== Active Models - Claude for MCQ/PDF =====
     describe('ACTIVE_MODELS', () => {
-        it('should use Claude Sonnet for MCQ generation', () => {
-            expect(ACTIVE_MODELS.MCQ_GENERATION).toBe(AI_MODELS.CLAUDE_SONNET);
-            expect(ACTIVE_MODELS.MCQ_GENERATION).toContain('anthropic/claude');
+        it('should use Gemini Flash for MCQ generation', () => {
+            expect(ACTIVE_MODELS.MCQ_GENERATION).toBe(AI_MODELS.GEMINI_FLASH);
+            expect(ACTIVE_MODELS.MCQ_GENERATION).toContain('google/gemini');
         });
 
-        it('should use Claude Sonnet for PDF extraction', () => {
-            expect(ACTIVE_MODELS.PDF_EXTRACTION).toBe(AI_MODELS.CLAUDE_SONNET);
-            expect(ACTIVE_MODELS.PDF_EXTRACTION).toContain('anthropic/claude');
+        it('should use Gemini Flash for PDF extraction', () => {
+            expect(ACTIVE_MODELS.PDF_EXTRACTION).toBe(AI_MODELS.GEMINI_FLASH);
+            expect(ACTIVE_MODELS.PDF_EXTRACTION).toContain('google/gemini');
         });
 
         it('should have essay evaluation model defined', () => {

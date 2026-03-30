@@ -49,19 +49,23 @@ export default function SettingsScreen({ navigation }) {
   };
 
   const handleReminderToggle = async (value) => {
+    const showMsg = (title, msg) => {
+      if (Platform.OS === 'web') window.alert(`${title}\n\n${msg}`);
+      else Alert.alert(title, msg, [{ text: 'OK' }]);
+    };
+
     if (value) {
       const hasPermission = await requestNotificationPermissions();
       if (!hasPermission) {
-        Alert.alert('Permission Required',
-          'Please enable notifications in your device settings to receive daily reminders.',
-          [{ text: 'OK' }]);
+        showMsg('Permission Required', 'Please enable notifications in your browser/device settings to receive daily reminders.');
         return;
       }
       const [hour, minute] = settings.reminderTime.split(':').map(Number);
       const success = await scheduleDailyReminder(hour, minute);
       if (success) {
         setSettings({ ...settings, reminderEnabled: true });
-        Alert.alert('Reminder Set! 🔔', `You'll receive a daily reminder at ${settings.reminderTime}`, [{ text: 'Great!' }]);
+        await updateSettings({ reminderEnabled: true });
+        showMsg('Reminder Set!', `You'll receive a daily reminder at ${settings.reminderTime}`);
       }
     } else {
       await cancelAllReminders();

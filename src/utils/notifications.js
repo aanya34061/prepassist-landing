@@ -3,6 +3,9 @@ import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import { getSettings, updateSettings } from './storage';
 
+// Web reminder interval storage
+let _webReminderInterval = null;
+
 // Configure notification behavior (native only)
 if (Platform.OS !== 'web') {
   Notifications.setNotificationHandler({
@@ -16,6 +19,19 @@ if (Platform.OS !== 'web') {
 
 // Request notification permissions
 export const requestNotificationPermissions = async () => {
+  // Web: use browser Notification API
+  if (Platform.OS === 'web') {
+    if (!('Notification' in window)) {
+      console.log('Browser does not support notifications');
+      return false;
+    }
+    if (Notification.permission === 'granted') return true;
+    if (Notification.permission === 'denied') return false;
+    const result = await Notification.requestPermission();
+    return result === 'granted';
+  }
+
+  // Native: use expo-notifications
   if (!Device.isDevice) {
     console.log('Notifications require a physical device');
     return false;
@@ -62,7 +78,29 @@ export const scheduleDailyReminder = async (hour = 9, minute = 0) => {
     const hasPermission = await requestNotificationPermissions();
     if (!hasPermission) return false;
 
-    // Schedule the notification
+    if (Platform.OS === 'web') {
+      // Web: use setInterval to check time and fire browser notification
+      _webReminderInterval = setInterval(() => {
+        const now = new Date();
+        if (now.getHours() === hour && now.getMinutes() === minute) {
+          new Notification('📚 Time to Study!', {
+            body: "Don't break your streak! Take a quick test today.",
+            icon: '/favicon.ico',
+          });
+        }
+      }, 60000); // Check every minute
+
+      await updateSettings({
+        reminderEnabled: true,
+        reminderTime: `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`,
+        notificationId: 'web-interval',
+      });
+
+      console.log(`[Web] Daily reminder scheduled for ${hour}:${minute.toString().padStart(2, '0')}`);
+      return true;
+    }
+
+    // Native: use expo-notifications
     const identifier = await Notifications.scheduleNotificationAsync({
       content: {
         title: '📚 Time to Study!',
@@ -134,7 +172,14 @@ export const scheduleNewsNotification = async () => {
 // Cancel all scheduled reminders
 export const cancelAllReminders = async () => {
   try {
-    await Notifications.cancelAllScheduledNotificationsAsync();
+    if (Platform.OS === 'web') {
+      if (_webReminderInterval) {
+        clearInterval(_webReminderInterval);
+        _webReminderInterval = null;
+      }
+    } else {
+      await Notifications.cancelAllScheduledNotificationsAsync();
+    }
     await updateSettings({ reminderEnabled: false, notificationId: null });
     return true;
   } catch (error) {

@@ -296,7 +296,7 @@ export default function PricingScreen({ navigation }) {
                 {/* Footer */}
                 <View style={styles.footer}>
                     <Text style={styles.footerText}>
-                        © 2024 PrepAssist. All rights reserved.
+                        © 2026 PrepAssist. All rights reserved.
                     </Text>
                 </View>
             </ScrollView>

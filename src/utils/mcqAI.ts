@@ -1,8 +1,9 @@
 import { Alert } from 'react-native';
 
 import { OPENROUTER_API_KEY } from './secureKey';
-const SITE_URL = 'https://upsc-prep-app.com';
-const SITE_NAME = 'UPSC Prep App';
+import { ACTIVE_MODELS, SITE_CONFIG } from '../config/aiModels';
+const SITE_URL = SITE_CONFIG.url;
+const SITE_NAME = SITE_CONFIG.name;
 
 export interface MCQ {
     question: string;
@@ -55,8 +56,8 @@ function parseMCQs(aiResponse: string): MCQ[] {
             currentCorrect = (correctMatch[1] || '').toUpperCase();
         }
 
-        // Extract explanation
-        const expMatch = section.match(/Explanation\s*[:\-]?\s*([\s\S]+?)(?=\n\n|Question|\d+\.|$)/gi);
+        // Extract explanation (removed `g` flag so `.match()` returns capture groups)
+        const expMatch = section.match(/Explanation\s*[:\-]?\s*([\s\S]+?)(?=\n\n|Question|\d+\.|$)/i);
         if (expMatch && expMatch[1]) {
             currentExplanation = (expMatch[1] || '').trim();
         }
@@ -91,7 +92,7 @@ export const generateMCQsFromText = async (text: string): Promise<MCQ[]> => {
                 "Content-Type": "application/json",
             },
             body: JSON.stringify({
-                model: "anthropic/claude-sonnet-4.5",
+                model: ACTIVE_MODELS.MCQ_GENERATION,
                 messages: [
                     {
                         "role": "user",

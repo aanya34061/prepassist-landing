@@ -217,7 +217,7 @@ export async function executeParallel<T>(
     maxConcurrent: number = PARALLEL_CONFIG.MAX_CONCURRENT_REQUESTS
 ): Promise<T[]> {
     const results: T[] = [];
-    const executing: Promise<void>[] = [];
+    const executing: Set<Promise<void>> = new Set();
 
     for (let i = 0; i < tasks.length; i++) {
         const task = tasks[i];
@@ -225,23 +225,15 @@ export async function executeParallel<T>(
         const p = Promise.resolve().then(async () => {
             const result = await task();
             results[i] = result;
+        }).then(() => {
+            executing.delete(p);
         });
 
-        executing.push(p);
+        executing.add(p);
 
         // If we've reached max concurrency, wait for one to complete
-        if (executing.length >= maxConcurrent) {
+        if (executing.size >= maxConcurrent) {
             await Promise.race(executing);
-            // Remove completed promises
-            for (let j = executing.length - 1; j >= 0; j--) {
-                const isSettled = await Promise.race([
-                    executing[j].then(() => true),
-                    Promise.resolve(false),
-                ]);
-                if (isSettled) {
-                    executing.splice(j, 1);
-                }
-            }
         }
     }
 
