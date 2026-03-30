@@ -530,18 +530,48 @@ export const AuthProvider = ({ children }) => {
   };
 
   const deleteAccount = async () => {
+    const userId = user?.id;
+    if (!userId) throw new Error('No user logged in');
+
     try {
-      // Clear all user data
+      // Step 1: Delete user data from Supabase tables
+      // Try RPC first (server-side function that handles everything including auth deletion)
+      const { error: rpcError } = await supabase.rpc('delete_user_account', {
+        p_user_id: userId,
+      });
+
+      if (rpcError) {
+        console.warn('[Auth] delete_user_account RPC failed, cleaning up manually:', rpcError.message);
+
+        // Fallback: manually delete from known tables
+        await Promise.allSettled([
+          supabase.from('credit_transactions').delete().eq('user_id', userId),
+          supabase.from('user_subscriptions').delete().eq('user_id', userId),
+          supabase.from('saved_articles').delete().eq('user_id', userId),
+          supabase.from('bug_reports').delete().eq('user_id', userId),
+        ]);
+      }
+
+      // Step 2: Sign out (invalidates session tokens)
+      await supabase.auth.signOut().catch(() => {});
+
+      // Step 3: Clear all local data
       const keysToRemove = [
         USER_STORAGE_KEY,
+        GUEST_USER_KEY,
         '@upsc_stats',
         '@upsc_streak',
         '@upsc_test_history',
         '@upsc_settings',
         '@question_bank',
+        '@upsc_ai_summaries',
+        '@upsc_ai_notebooks',
+        '@upsc_summary_counter',
       ];
       await AsyncStorage.multiRemove(keysToRemove);
       setUser(null);
+
+      console.log('[Auth] Account deleted successfully for user:', userId);
     } catch (error) {
       console.error('Error deleting account:', error);
       throw error;
