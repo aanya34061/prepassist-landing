@@ -2,8 +2,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import { extractTextFromPDF } from './pdfTextExtract';
 
-// Free OCR.space API key (get your own at https://ocr.space/ocrapi)
-const OCR_API_KEY = 'K85553321788957';
+const OCR_API_KEY = process.env.EXPO_PUBLIC_OCR_API_KEY || '';
 const OCR_API_URL = 'https://api.ocr.space/parse/image';
 
 /**

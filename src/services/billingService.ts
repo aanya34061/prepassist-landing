@@ -60,34 +60,6 @@ export type FeatureType = keyof typeof CREDIT_COSTS;
 // ===================== API FUNCTIONS =====================
 
 /**
- * Get all available subscription plans
- */
-export async function getSubscriptionPlans(): Promise<SubscriptionPlan[]> {
-    const { data, error } = await supabase
-        .from('subscription_plans')
-        .select('*')
-        .eq('is_active', true)
-        .order('price_inr');
-
-    if (error) throw error;
-    return data || [];
-}
-
-/**
- * Get all available credit packages
- */
-export async function getCreditPackages(): Promise<CreditPackage[]> {
-    const { data, error } = await supabase
-        .from('credit_packages')
-        .select('*')
-        .eq('is_active', true)
-        .order('price_inr');
-
-    if (error) throw error;
-    return data || [];
-}
-
-/**
  * Get user's current subscription and credits
  */
 export async function getUserCredits(): Promise<CreditBalance> {
@@ -146,7 +118,7 @@ export async function checkCredits(feature: FeatureType): Promise<{
 /**
  * Deduct credits for using a feature
  */
-export async function useCredits(
+export async function deductCredits(
     feature: FeatureType,
     description?: string
 ): Promise<{ success: boolean; balance: number; error?: string }> {
@@ -194,137 +166,6 @@ export async function getTransactionHistory(limit = 20) {
     }
 
     return data || [];
-}
-
-/**
- * Get user's payment history
- */
-export async function getPaymentHistory(limit = 20) {
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) return [];
-
-    const { data, error } = await supabase
-        .from('payment_history')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(limit);
-
-    if (error) {
-        console.error('[Billing] Error getting payment history:', error);
-        return [];
-    }
-
-    return data || [];
-}
-
-/**
- * Create checkout URL for subscription via DodoPayments
- */
-export async function createSubscriptionCheckout(planType: 'basic' | 'pro'): Promise<string> {
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) throw new Error('Not authenticated');
-
-    const plans = await getSubscriptionPlans();
-    const plan = plans.find(p => p.plan_type === planType);
-
-    if (!plan) throw new Error('Plan not found');
-
-    // DodoPayments checkout URL
-    // In production, this would call your backend which calls DodoPayments API
-    const checkoutParams = new URLSearchParams({
-        product_id: plan.id,
-        amount: plan.price_inr.toString(),
-        currency: 'INR',
-        customer_email: user.email || '',
-        customer_id: user.id,
-        plan_type: planType,
-        return_url: 'upscprep://billing/success',
-        cancel_url: 'upscprep://billing/cancel',
-    });
-
-    // This would be your DodoPayments checkout URL
-    return `https://checkout.dodopayments.com/?${checkoutParams.toString()}`;
-}
-
-/**
- * Create checkout URL for credit purchase via DodoPayments
- */
-export async function createCreditCheckout(packageId: string): Promise<string> {
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) throw new Error('Not authenticated');
-
-    const packages = await getCreditPackages();
-    const pkg = packages.find(p => p.id === packageId);
-
-    if (!pkg) throw new Error('Package not found');
-
-    // DodoPayments checkout URL
-    const checkoutParams = new URLSearchParams({
-        product_id: pkg.id,
-        amount: pkg.price_inr.toString(),
-        currency: 'INR',
-        customer_email: user.email || '',
-        customer_id: user.id,
-        credits: pkg.credits.toString(),
-        type: 'credits',
-        return_url: 'upscprep://billing/success',
-        cancel_url: 'upscprep://billing/cancel',
-    });
-
-    return `https://checkout.dodopayments.com/?${checkoutParams.toString()}`;
-}
-
-/**
- * Handle successful payment webhook (called from backend)
- */
-export async function handlePaymentSuccess(
-    userId: string,
-    paymentType: 'subscription' | 'credits',
-    paymentId: string,
-    planType?: string,
-    credits?: number
-): Promise<void> {
-    if (paymentType === 'subscription' && planType) {
-        const plans = await getSubscriptionPlans();
-        const plan = plans.find(p => p.plan_type === planType);
-
-        if (plan) {
-            // Create or update subscription
-            await supabase.from('user_subscriptions').upsert({
-                user_id: userId,
-                plan_type: planType,
-                status: 'active',
-                price_inr: plan.price_inr,
-                monthly_credits: plan.monthly_credits,
-                current_credits: plan.monthly_credits,
-                dodo_subscription_id: paymentId,
-                expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-            });
-
-            // Log payment
-            await supabase.from('payment_history').insert({
-                user_id: userId,
-                payment_type: 'subscription',
-                amount_inr: plan.price_inr,
-                status: 'completed',
-                dodo_payment_id: paymentId,
-                plan_type: planType,
-            });
-        }
-    } else if (paymentType === 'credits' && credits) {
-        // Add credits
-        await supabase.rpc('add_credits', {
-            p_user_id: userId,
-            p_credits: credits,
-            p_transaction_type: 'purchase',
-            p_payment_id: paymentId,
-            p_description: `Purchased ${credits} credits`
-        });
-    }
 }
 
 /**

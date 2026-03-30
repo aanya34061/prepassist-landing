@@ -1,67 +1,21 @@
 /**
- * ULTRA-SECURE API KEY STORAGE
- * 
- * Multi-layer obfuscation system designed to make key extraction
- * extremely difficult for reverse engineers.
- * 
- * Security layers:
- * 1. Key split into multiple fragments
- * 2. Fragments stored with decoy data
- * 3. XOR cipher with rotating keys
- * 4. Base64 encoding reversed
- * 5. Character substitution cipher
- * 6. Time-based validation checksum
- * 7. Anti-debugging detection
+ * API key configuration module
  */
 
-// ============= LAYER 1: FRAGMENT STORAGE WITH DECOYS =============
-// Real fragments are at specific indices, others are decoys
 const _f = [
-    'x9k2', // decoy
-    '2c94', // [1] real - part 2
-    'a7m3', // decoy
-    '581d', // [3] real - part 3
-    'p2q8', // decoy
-    '89f4', // [5] real - part 4
-    'z1y4', // decoy
-    '8d58', // [7] real - part 5
-    'w3r9', // decoy
+    'x9k2', '2c94', 'a7m3', '581d', 'p2q8', '89f4', 'z1y4', '8d58', 'w3r9',
 ];
 
 const _g = [
-    'k5n1', // decoy
-    '8e7c', // [1] real - part 6
-    'h8j2', // decoy
-    '51a0', // [3] real - part 7
-    'm4l6', // decoy
-    'b546', // [5] real - part 8
-    't7u3', // decoy
-    'a47a', // [7] real - part 9
-    'v9w5', // decoy
+    'k5n1', '8e7c', 'h8j2', '51a0', 'm4l6', 'b546', 't7u3', 'a47a', 'v9w5',
 ];
 
 const _h = [
-    'q2e8', // decoy
-    'cd11', // [1] real - part 10
-    'r4t6', // decoy
-    '12e5', // [3] real - part 11
-    'y7i9', // decoy
-    'aed7', // [5] real - part 12
-    'o3p1', // decoy
-    '3141', // [7] real - part 13
-    's6d4', // decoy
+    'q2e8', 'cd11', 'r4t6', '12e5', 'y7i9', 'aed7', 'o3p1', '3141', 's6d4',
 ];
 
 const _i = [
-    'f8g2', // decoy
-    '79ef', // [1] real - part 14
-    'b5n7', // decoy
-    '6545', // [3] real - part 15
-    'c9v1', // decoy
-    '36f3', // [5] real - part 16
-    'x3z8', // decoy
-    '3454', // [7] real - part 17
-    'l4k6', // decoy
+    'f8g2', '79ef', 'b5n7', '6545', 'c9v1', '36f3', 'x3z8', '3454', 'l4k6',
 ];
 
 // ============= LAYER 2: PREFIX CONSTRUCTION =============

@@ -4,14 +4,11 @@
 
 // OpenRouter API Configuration
 // Get your API key from https://openrouter.ai/keys
-import { OPENROUTER_API_KEY } from '../../../utils/secureKey'; // process.env.EXPO_PUBLIC_OPENROUTER_API_KEY || '';
+import { OPENROUTER_API_KEY } from '../../../utils/secureKey';
+import { ACTIVE_MODELS, OPENROUTER_BASE_URL, SITE_CONFIG } from '../../../config/aiModels';
 
-// Debug: Log API key status (not the full key for security)
-console.log('[OpenRouter] API Key configured:', OPENROUTER_API_KEY ? `Yes (${OPENROUTER_API_KEY.substring(0, 10)}...)` : 'No');
-console.log('[OpenRouter] API Key length:', OPENROUTER_API_KEY.length);
-
-const API_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const MODEL = 'google/gemini-3-flash-preview'; // Gemini 3 Pro with reasoning
+const API_URL = OPENROUTER_BASE_URL;
+const MODEL = ACTIVE_MODELS.MIND_MAP;
 
 // Check if API key is configured
 const isApiKeyConfigured = () => {
@@ -204,8 +201,6 @@ export const generateMindMap = async (
 
   // Debug: Log what we're about to send
   console.log('[OpenRouter] Preparing request...');
-  console.log('[OpenRouter] API Key present:', !!OPENROUTER_API_KEY);
-  console.log('[OpenRouter] API Key first 15 chars:', OPENROUTER_API_KEY.substring(0, 15));
   console.log('[OpenRouter] Model:', MODEL);
   console.log('[OpenRouter] Message count:', messages.length);
 
@@ -217,8 +212,8 @@ export const generateMindMap = async (
       headers: {
         'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
         'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://upsc-prep.app',
-        'X-Title': 'UPSC Prep Mind Map',
+        'HTTP-Referer': SITE_CONFIG.url,
+        'X-Title': SITE_CONFIG.name,
       },
       body: JSON.stringify({
         model: MODEL,

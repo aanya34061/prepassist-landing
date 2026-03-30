@@ -13,6 +13,7 @@ import { Alert, Platform } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { canBypassCredits } from '../utils/devMode';
+import { CREDIT_COSTS, FeatureType } from '../services/billingService';
 
 // Cross-platform alert helper
 function showAlert(title: string, message: string, buttons?: Array<{ text: string; onPress?: () => void; style?: string }>) {
@@ -30,16 +31,7 @@ function showAlert(title: string, message: string, buttons?: Array<{ text: strin
     }
 }
 
-// Credit costs for each feature
-export const CREDIT_COSTS = {
-    summary: 1,
-    mind_map: 2,
-    mcq_generator: 3,
-    pdf_mcq: 5,
-    essay_evaluation: 3,
-};
-
-export type FeatureType = keyof typeof CREDIT_COSTS;
+export { CREDIT_COSTS, FeatureType };
 
 const DEFAULT_CREDITS = 10;
 const VALID_PAID_PLANS = ['basic', 'pro'];
@@ -215,7 +207,7 @@ export function useCredits() {
     // Always allows if credits haven't loaded yet or if bypass is active
     const hasEnoughCredits = useCallback((feature: FeatureType): boolean => {
         if (canBypassCredits()) return true;
-        if (loading || !initialized) return true; // Don't block while loading
+        if (loading || !initialized) return false; // Block until credits confirmed
         const cost = CREDIT_COSTS[feature];
         return credits >= cost;
     }, [credits, loading, initialized]);
@@ -299,18 +291,16 @@ export function useCredits() {
                 console.warn('[Credits] Direct update fallback error:', fallbackErr);
             }
 
-            // All DB methods failed — allow the feature anyway and log it
-            // This prevents a broken Supabase RPC from blocking the entire app
-            console.warn(`[Credits] All deduction methods failed. Allowing feature ${feature} to proceed.`);
-            setCredits(Math.max(0, credits - cost));
-            return true;
+            // All DB methods failed — block the feature and alert user
+            console.warn(`[Credits] All deduction methods failed for feature ${feature}.`);
+            showAlert('Connection Error', 'Could not verify credits. Please check your connection and try again.');
+            return false;
 
         } catch (err: any) {
             console.error('[Credits] Deduction error:', err);
-            // Network/unexpected errors — still allow the feature to work
-            console.warn(`[Credits] Allowing feature ${feature} despite error.`);
-            setCredits(Math.max(0, credits - cost));
-            return true;
+            // Network/unexpected errors — block the feature
+            showAlert('Connection Error', 'Could not verify credits. Please check your connection and try again.');
+            return false;
         }
     }, [credits, userId, fetchCredits]);
 

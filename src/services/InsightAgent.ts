@@ -1,32 +1,8 @@
 import { supabase } from '../lib/supabase';
 import { getAllNotes } from '../features/Notes/services/localNotesStorage';
 
-const OPENROUTER_API_KEY = process.env.EXPO_PUBLIC_OPENROUTER_API_KEY;
-
-// --- SECURITY: OBFUSCATED FALLBACK KEY (ANTI-SCRAPE) ---
-// Sharded key parts to prevent static analysis detection
-const _k1 = "sk-or-v1-";
-const _k2 = "7957b75b6b";
-const _k3 = "965d6213ea";
-const _k4 = "52f1129231";
-const _k5 = "70582679fc";
-const _k6 = "cad53e5d7a";
-const _k7 = "8444569341";
-const _k8 = "c6fa";
-
-/**
- * World-class Hacker Proof Key Reassembly Protocol
- * Reconstructs the key at runtime only when needed.
- */
-const _0x5f3e = () => {
-    // Basic verification of env key validity
-    if (OPENROUTER_API_KEY && OPENROUTER_API_KEY.startsWith("sk-or-")) {
-        return OPENROUTER_API_KEY;
-    }
-    // Fallback to obfuscated Source Key
-    return `${_k1}${_k2}${_k3}${_k4}${_k5}${_k6}${_k7}${_k8}`;
-};
-// -------------------------------------------------------
+import { OPENROUTER_API_KEY } from '../utils/secureKey';
+import { ACTIVE_MODELS, OPENROUTER_BASE_URL, SITE_CONFIG } from '../config/aiModels';
 
 export interface InsightUpdate {
     noteId: string;
@@ -44,13 +20,7 @@ export interface InsightStatus {
 
 export class InsightAgent {
     /**
-     * OMNISCIENT AI AGENT (100% Reliable Version)
-     * 
-     * Strategy:
-     * 1. Fetch ALL User Notes (Full Content)
-     * 2. Fetch Latest 50 News Articles (Full Content)
-     * 3. Send EVERYTHING to Gemini 2.0 Flash (1M Token Window)
-     * 4. No client-side filtering. No keyword guessing. Pure AI Semantic Analysis.
+     * Cross-reference user notes against latest news headlines via AI.
      */
     static async checkNoteStatus(): Promise<InsightStatus> {
         try {
@@ -100,7 +70,7 @@ export class InsightAgent {
             }));
 
             // 4. AI Analysis via OpenRouter
-            const secureKey = _0x5f3e();
+            const secureKey = OPENROUTER_API_KEY;
 
             if (!secureKey) {
                 console.warn('[OmniscientAgent] No API Key.');
@@ -141,16 +111,16 @@ Output ONLY valid JSON:
 
             console.log(`[OmniscientAgent] Sending ${notesPayload.length} notes (FULL) and ${newsPayload.length} articles (FULL) to Gemini 2.0...`);
 
-            const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            const response = await fetch(OPENROUTER_BASE_URL, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${secureKey}`,
                     'Content-Type': 'application/json',
-                    'HTTP-Referer': 'https://prepassist.in',
-                    'X-Title': 'PrepAssist UPSC',
+                    'HTTP-Referer': SITE_CONFIG.url,
+                    'X-Title': SITE_CONFIG.name,
                 },
                 body: JSON.stringify({
-                    model: 'google/gemini-2.0-flash-001',
+                    model: ACTIVE_MODELS.INSIGHT,
                     messages: [
                         { role: 'system', content: systemPrompt },
                         { role: 'user', content: `USER NOTES LIBRARY: \n${JSON.stringify(notesPayload)}\n\nNEWS CORPUS: \n${JSON.stringify(newsPayload)}` },
@@ -169,11 +139,10 @@ Output ONLY valid JSON:
             return result;
 
         } catch (error) {
-            console.error('[OmniscientAgent] Analysis Failed:', error);
-            // Fail gracefully but loudly in logs
+            console.error('[InsightAgent] Analysis Failed:', error);
             return {
                 status: 'ok',
-                message: "Knowledge Radar active. No critical mismatches found in this scan.",
+                message: "Analysis failed. Please check your connection and try again.",
                 updates: []
             };
         }
@@ -184,7 +153,7 @@ Output ONLY valid JSON:
      */
     static async chatWithAgent(message: string, history: any[], context: any): Promise<string> {
         try {
-            const secureKey = _0x5f3e();
+            const secureKey = OPENROUTER_API_KEY;
 
             if (!secureKey) {
                 console.error('[OmniscientChat] API Key missing');
@@ -216,16 +185,16 @@ Be professional, precise, and act like a smart news anchor giving a personalized
             ];
 
             console.log('[OmniscientChat] Sending request to OpenRouter...');
-            const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            const response = await fetch(OPENROUTER_BASE_URL, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${secureKey}`,
                     'Content-Type': 'application/json',
-                    'HTTP-Referer': 'https://prepassist.in',
-                    'X-Title': 'PrepAssist UPSC',
+                    'HTTP-Referer': SITE_CONFIG.url,
+                    'X-Title': SITE_CONFIG.name,
                 },
                 body: JSON.stringify({
-                    model: 'google/gemini-2.0-flash-001',
+                    model: ACTIVE_MODELS.INSIGHT,
                     messages: messages,
                 }),
             });

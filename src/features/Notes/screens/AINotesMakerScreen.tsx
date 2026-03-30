@@ -54,6 +54,7 @@ import { smartScrape, isValidUrl, extractDomain } from '../services/webScraper';
 import { useAuth } from '../../../context/AuthContext';
 import { syncNoteToFirebase, deleteNoteFromFirebase } from '../../../services/firebaseNotesSync';
 import { OPENROUTER_API_KEY } from '../../../utils/secureKey';
+import { ACTIVE_MODELS, OPENROUTER_BASE_URL, SITE_CONFIG } from '../../../config/aiModels';
 import { checkNewsMatches, MatchedArticle, getMatchesByNoteId, checkPDFCrossReferences, PDFCrossRef } from '../../../services/NewsMatchService';
 import { FlatList, RefreshControl } from 'react-native';
 import InsightSupportModal from '../../../components/InsightSupportModal';
@@ -1026,16 +1027,16 @@ Generate a professional, exam-oriented summary. NO emojis, NO markdown.`;
 
             console.log('[AINotes] Sending request to OpenRouter...');
 
-            const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            const response = await fetch(OPENROUTER_BASE_URL, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
                     'Content-Type': 'application/json',
-                    'HTTP-Referer': 'https://prepassist.in',
-                    'X-Title': 'PrepAssist AI Notes',
+                    'HTTP-Referer': SITE_CONFIG.url,
+                    'X-Title': SITE_CONFIG.name,
                 },
                 body: JSON.stringify({
-                    model: 'google/gemini-2.0-flash-001',
+                    model: ACTIVE_MODELS.NOTES,
                     messages: [{ role: 'user', content: prompt }],
                     temperature: 0.7,
                     max_tokens: 4000,

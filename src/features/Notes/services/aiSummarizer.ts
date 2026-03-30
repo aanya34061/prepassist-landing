@@ -4,9 +4,10 @@
  */
 
 import { OPENROUTER_API_KEY } from '../../../utils/secureKey';
+import { ACTIVE_MODELS, OPENROUTER_BASE_URL, SITE_CONFIG } from '../../../config/aiModels';
 
-const MODEL = 'google/gemini-2.0-flash-001';
-const API_URL = 'https://openrouter.ai/api/v1/chat/completions';
+const MODEL = ACTIVE_MODELS.SUMMARY;
+const API_URL = OPENROUTER_BASE_URL;
 
 const SYSTEM_PROMPT = `You are an expert UPSC tutor and content summarizer. 
 Your goal is to summarize the user's note content into clear, concise, and study-friendly bullet points.
@@ -43,8 +44,8 @@ export const summarizeNoteContent = async (content: string): Promise<SummarizeRe
             headers: {
                 'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
                 'Content-Type': 'application/json',
-                'HTTP-Referer': 'https://upsc-prep.app',
-                'X-Title': 'UPSC Prep Notes Summarizer',
+                'HTTP-Referer': SITE_CONFIG.url,
+                'X-Title': SITE_CONFIG.name,
             },
             body: JSON.stringify({
                 model: MODEL,
@@ -110,8 +111,8 @@ export const analyzeForUPSC = async (content: string, title?: string): Promise<S
             headers: {
                 'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
                 'Content-Type': 'application/json',
-                'HTTP-Referer': 'https://upsc-prep.app',
-                'X-Title': 'UPSC Prep Notes Analyzer',
+                'HTTP-Referer': SITE_CONFIG.url,
+                'X-Title': SITE_CONFIG.name,
             },
             body: JSON.stringify({
                 model: MODEL,

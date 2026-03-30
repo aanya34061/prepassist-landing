@@ -33,6 +33,7 @@ import { useTheme } from '../../Reference/theme/ThemeContext';
 // @ts-ignore
 import { useWebStyles } from '../../../components/WebContainer';
 import { OPENROUTER_API_KEY } from '../../../utils/secureKey';
+import { ACTIVE_MODELS, OPENROUTER_BASE_URL, SITE_CONFIG } from '../../../config/aiModels';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAIFeature, CreditInfoBanner, LowCreditBanner } from '../../../hooks/useAIFeature';
 import {
@@ -45,8 +46,8 @@ import {
 import { AIDisclaimer } from '../../../components/AIDisclaimer';
 
 // ===================== CONFIGURATION =====================
-const API_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const MODEL = 'google/gemini-2.5-flash';
+const API_URL = OPENROUTER_BASE_URL;
+const MODEL = ACTIVE_MODELS.MCQ_GENERATION;
 
 // ===================== TYPES =====================
 interface MCQ {
@@ -138,8 +139,6 @@ async function generateMCQs(
     preferences: string
 ): Promise<MCQ[]> {
     console.log('[MCQ] Starting generation...');
-    console.log('[MCQ] API Key present:', !!OPENROUTER_API_KEY);
-    console.log('[MCQ] API Key length:', OPENROUTER_API_KEY?.length);
 
     if (!OPENROUTER_API_KEY || OPENROUTER_API_KEY.length < 10) {
         throw new Error('API key not configured. Please check your setup.');
@@ -157,8 +156,8 @@ async function generateMCQs(
             headers: {
                 'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
                 'Content-Type': 'application/json',
-                'HTTP-Referer': 'https://upsc-prep.app',
-                'X-Title': 'UPSC Prep MCQ Generator',
+                'HTTP-Referer': SITE_CONFIG.url,
+                'X-Title': SITE_CONFIG.name,
             },
             body: JSON.stringify({
                 model: MODEL,

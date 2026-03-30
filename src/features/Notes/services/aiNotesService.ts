@@ -6,7 +6,8 @@
 import { getItem, setItem } from './storage';
 import { LocalNote, LocalTag, getAllNotes, getAllTags, getNotesByTag, getNotesByNotebook } from './localNotesStorage';
 
-const OPENROUTER_API_KEY = process.env.EXPO_PUBLIC_OPENROUTER_API_KEY;
+import { ACTIVE_MODELS, OPENROUTER_BASE_URL, SITE_CONFIG } from '../../../config/aiModels';
+import { OPENROUTER_API_KEY } from '../../../utils/secureKey';
 
 // Storage keys
 const STORAGE_KEYS = {
@@ -302,16 +303,16 @@ Generate a well-structured summary that:
 3. Includes relevant hashtags
 4. Is suitable for quick revision`;
 
-        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        const response = await fetch(OPENROUTER_BASE_URL, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
                 'Content-Type': 'application/json',
-                'HTTP-Referer': 'https://prepassist.in',
-                'X-Title': 'PrepAssist UPSC',
+                'HTTP-Referer': SITE_CONFIG.url,
+                'X-Title': SITE_CONFIG.name,
             },
             body: JSON.stringify({
-                model: 'google/gemini-2.0-flash-001',
+                model: ACTIVE_MODELS.SUMMARY,
                 messages: [
                     { role: 'system', content: systemPrompt },
                     { role: 'user', content: userPrompt },

@@ -41,6 +41,7 @@ if (Platform.OS !== 'web') {
 }
 
 import { OPENROUTER_API_KEY } from '../../../utils/secureKey';
+import { ACTIVE_MODELS, OPENROUTER_BASE_URL, SITE_CONFIG } from '../../../config/aiModels';
 import { savePDFMCQSession, getAllPDFMCQSessions, getPDFMCQSession, updatePDFMCQSession, PDFMCQSession, calculateSessionScore } from '../utils/pdfMCQStorage';
 import useCredits from '../../../hooks/useCredits';
 import { LowCreditBanner } from '../../../hooks/useAIFeature';
@@ -53,9 +54,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 // ===================== CONFIGURATION =====================
 const CONFIG = {
     OPENROUTER_API_KEY: OPENROUTER_API_KEY,
-    OPENROUTER_URL: 'https://openrouter.ai/api/v1/chat/completions',
-    // Gemini 2.5 Flash - native PDF parsing with fast processing
-    AI_MODEL: 'google/gemini-2.5-flash',
+    OPENROUTER_URL: OPENROUTER_BASE_URL,
+    AI_MODEL: ACTIVE_MODELS.MCQ_GENERATION,
     // File size limits
     MAX_FILE_SIZE_MB: 20,
     MAX_TEXT_LENGTH: 200000,
@@ -334,7 +334,8 @@ async function extractTextFromPDFNative(base64Data: string, mimeType: string): P
 
 async function extractTextFromPDF(base64Data: string, mimeType: string, fileName: string): Promise<string> {
     try {
-        if (Platform.OS === 'web' && mimeType === 'application/pdf') {
+        // Always use Gemini for PDFs (no page limit) — fall back to OCR for non-PDFs
+        if (mimeType === 'application/pdf') {
             return await extractTextFromPDFWeb(base64Data);
         }
         return await extractTextFromPDFNative(base64Data, mimeType);
@@ -728,8 +729,8 @@ RESPOND WITH VALID JSON ONLY (no markdown, no code blocks):
                 headers: {
                     'Authorization': `Bearer ${CONFIG.OPENROUTER_API_KEY}`,
                     'Content-Type': 'application/json',
-                    'HTTP-Referer': 'https://upsc-prep.app',
-                    'X-Title': 'UPSC PDF MCQ Generator',
+                    'HTTP-Referer': SITE_CONFIG.url,
+                    'X-Title': SITE_CONFIG.name,
                 },
                 body: JSON.stringify({
                     model: CONFIG.AI_MODEL,
@@ -839,8 +840,8 @@ RESPOND WITH VALID JSON ONLY (no markdown, no code blocks):
             headers: {
                 'Authorization': `Bearer ${CONFIG.OPENROUTER_API_KEY}`,
                 'Content-Type': 'application/json',
-                'HTTP-Referer': 'https://upsc-prep.app',
-                'X-Title': 'UPSC PDF MCQ Generator',
+                'HTTP-Referer': SITE_CONFIG.url,
+                'X-Title': SITE_CONFIG.name,
             },
             body: JSON.stringify({
                 model: CONFIG.AI_MODEL,
@@ -945,8 +946,8 @@ START GENERATING ${count} MCQs NOW:`;
         headers: {
             'Authorization': `Bearer ${CONFIG.OPENROUTER_API_KEY}`,
             'Content-Type': 'application/json',
-            'HTTP-Referer': 'https://upsc-prep-app.com',
-            'X-Title': 'UPSC Prep App',
+            'HTTP-Referer': SITE_CONFIG.url,
+            'X-Title': SITE_CONFIG.name,
         },
         body: JSON.stringify({
             model: CONFIG.AI_MODEL,

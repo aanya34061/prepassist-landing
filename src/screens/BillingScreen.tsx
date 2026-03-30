@@ -27,28 +27,18 @@ import { useWebStyles } from '../components/WebContainer';
 import { useAuth } from '../context/AuthContext';
 import { useCredits } from '../hooks/useCredits';
 import {
-    getSubscriptionPlans,
-    getCreditPackages,
     getUserCredits,
     getTransactionHistory,
     formatPrice,
-    SubscriptionPlan,
-    CreditPackage,
     CreditBalance,
     CREDIT_COSTS,
 } from '../services/billingService';
+import { DODO_CONFIG, getCheckoutUrl } from '../services/dodoPaymentsService';
 
 // ============== LIVE CHECKOUT URLs ==============
-const CHECKOUT_URLS = {
-    CREDITS_50: 'https://checkout.dodopayments.com/buy/pdt_0NWfLXQfz6P34vDNgGT6J',
-    CREDITS_120: 'https://checkout.dodopayments.com/buy/pdt_0NWfLZHVYcwnA37B60iio',
-    CREDITS_300: 'https://checkout.dodopayments.com/buy/pdt_0NWfLbT49dqQm9bNqVVjS',
-    CREDITS_750: 'https://checkout.dodopayments.com/buy/pdt_0NWfNy0Q3SrufzdKZlE2G',
-    CREDITS_1200: 'https://checkout.dodopayments.com/buy/pdt_0NWfO0TYn9murkxJ3FWbC',
-    CREDITS_1999: 'https://checkout.dodopayments.com/buy/pdt_0NWfO2IA7c8uoxbXKPkFP',
-    TEST_5_RUPEES: 'https://checkout.dodopayments.com/buy/pdt_0NXVmuekVgYecsGGsW7li',
-    STORAGE_PLAN: 'https://checkout.dodopayments.com/buy/pdt_0NaAamwV8NdMAXe0v2yBx', // ₹299/month Cloud Storage
-};
+const CHECKOUT_URLS = Object.fromEntries(
+    Object.entries(DODO_CONFIG.PRODUCTS).map(([key, productId]) => [key, getCheckoutUrl(productId)])
+) as Record<keyof typeof DODO_CONFIG.PRODUCTS, string>;
 
 export default function BillingScreen() {
     const { theme, isDark } = useTheme();
@@ -498,7 +488,7 @@ export default function BillingScreen() {
                             </Text>
                         </View>
                         <View style={{ alignItems: 'flex-end' }}>
-                            <Text style={{ fontSize: 22, fontWeight: '800', color: '#2A7DEB' }}>₹299</Text>
+                            <Text style={{ fontSize: 22, fontWeight: '800', color: '#2A7DEB' }}>₹199</Text>
                             <Text style={{ fontSize: 11, color: isDark ? '#94A3B8' : '#64748B' }}>/month</Text>
                         </View>
                     </View>
@@ -517,7 +507,7 @@ export default function BillingScreen() {
                         onPress={() => openCheckout(CHECKOUT_URLS.STORAGE_PLAN, 'Cloud Storage Plan')}
                     >
                         <Ionicons name="card" size={18} color="#FFF" />
-                        <Text style={{ color: '#FFF', fontSize: 15, fontWeight: '700' }}>Get Subscription - ₹299/month</Text>
+                        <Text style={{ color: '#FFF', fontSize: 15, fontWeight: '700' }}>Get Subscription - ₹199/month</Text>
                     </TouchableOpacity>
                 </View>
 

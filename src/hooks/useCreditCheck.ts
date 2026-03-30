@@ -9,7 +9,7 @@ import { Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import {
     checkCredits,
-    useCredits,
+    deductCredits,
     getUserCredits,
     CREDIT_COSTS,
     FeatureType,
@@ -71,7 +71,7 @@ export function useCreditCheck(): UseCreditCheckResult {
             }
 
             // Consume the credits
-            const result = await useCredits(feature, description);
+            const result = await deductCredits(feature, description);
 
             if (result.success) {
                 setCredits(result.balance);

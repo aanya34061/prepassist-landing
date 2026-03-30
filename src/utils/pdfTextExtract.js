@@ -4,8 +4,7 @@
  * Returns extracted text or empty string on failure.
  */
 import { OPENROUTER_API_KEY } from './secureKey';
-
-const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1/chat/completions';
+import { ACTIVE_MODELS, OPENROUTER_BASE_URL } from '../config/aiModels';
 
 /**
  * Extract text from a PDF using Gemini API.
@@ -25,7 +24,7 @@ export async function extractTextFromPDF(base64Data, sourceType = 'base64') {
         'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: ACTIVE_MODELS.PDF_EXTRACTION,
         messages: [
           {
             role: 'user',

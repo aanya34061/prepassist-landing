@@ -20,13 +20,14 @@ import { useTheme } from '../features/Reference/theme/ThemeContext';
 import { useWebStyles } from '../components/WebContainer';
 import { saveEssayAttempt, getEssayAttempts } from '../utils/storage';
 import { OPENROUTER_API_KEY } from '../utils/secureKey';
+import { ACTIVE_MODELS, OPENROUTER_BASE_URL, SITE_CONFIG } from '../config/aiModels';
 import { SmartTextInput } from '../components/SmartTextInput';
 import useCredits from '../hooks/useCredits';
 import { LowCreditBanner } from '../hooks/useAIFeature';
 
 // OpenRouter Configuration
-const API_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const MODEL = 'google/gemini-3-flash-preview';
+const API_URL = OPENROUTER_BASE_URL;
+const MODEL = ACTIVE_MODELS.ESSAY_EVALUATION;
 
 export default function MainsAnswerEvaluationScreen({ navigation }) {
   const { theme, isDark } = useTheme();
@@ -246,8 +247,8 @@ Return ONLY valid JSON, no markdown blocks or explanation.`;
         headers: {
           'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
           'Content-Type': 'application/json',
-          'HTTP-Referer': 'https://upsc-prep.app',
-          'X-Title': 'UPSC Essay Evaluator',
+          'HTTP-Referer': SITE_CONFIG.url,
+          'X-Title': SITE_CONFIG.name,
         },
         body: JSON.stringify({
           model: MODEL,

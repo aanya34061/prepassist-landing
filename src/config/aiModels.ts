@@ -17,10 +17,10 @@ export const SITE_CONFIG = {
 };
 
 export const AI_MODELS = {
-    // Gemini Models (Google) - Fastest for our use case
+    // Gemini Models (Google) - All currently mapped to gemini-2.5-flash
     GEMINI_FLASH: 'google/gemini-2.5-flash',
     GEMINI_FLASH_LATEST: 'google/gemini-2.5-flash',
-    GEMINI_PRO: 'google/gemini-2.5-flash',
+    GEMINI_PRO: 'google/gemini-2.5-flash', // NOTE: Same as FLASH — update when a Pro model is needed
 
     // Claude Models (Anthropic) - Best for analysis and PDF parsing
     CLAUDE_SONNET: 'anthropic/claude-sonnet-4.5',
@@ -42,11 +42,20 @@ export const ACTIVE_MODELS = {
     // MCQ Generation - Gemini for fast, reliable generation
     MCQ_GENERATION: AI_MODELS.GEMINI_FLASH,
 
-    // Essay Evaluation - Pro for quality
+    // Essay Evaluation - Currently uses Flash (same as GEMINI_PRO alias)
     ESSAY_EVALUATION: AI_MODELS.GEMINI_PRO,
 
     // Mind Map Generation
     MIND_MAP: AI_MODELS.GEMINI_FLASH_LATEST,
+
+    // AI Summarizer & Notes Service
+    SUMMARY: AI_MODELS.GEMINI_FLASH,
+
+    // AI Notes Maker
+    NOTES: AI_MODELS.GEMINI_FLASH,
+
+    // Insight Agent
+    INSIGHT: AI_MODELS.GEMINI_FLASH,
 };
 
 // Model capabilities
