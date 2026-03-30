@@ -37,6 +37,7 @@ import { syncNoteToFirebase } from '../../../services/firebaseNotesSync';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
+import { extractTextFromPDF } from '../../../utils/pdfTextExtract';
 
 const OCR_API_KEY = process.env.EXPO_PUBLIC_OCR_API_KEY || '';
 const OCR_API_URL = 'https://api.ocr.space/parse/image';
@@ -182,52 +183,78 @@ export const CreateNoteScreen: React.FC<CreateNoteScreenProps> = ({ navigation, 
             };
             setNoteSources(prev => [...prev, newSource]);
 
-            // OCR the PDF in background
+            // Extract text from PDF in background
             setProcessingPdfIds(prev => new Set(prev).add(sourceId));
             try {
                 const base64 = await readFileAsBase64(asset.uri);
-                const sizeInKB = (base64.length * 3) / 4 / 1024;
-                if (sizeInKB > 1024) {
-                    Alert.alert('PDF Too Large', 'PDF exceeds 1MB limit for OCR. The file has been attached but text could not be extracted.');
-                    setProcessingPdfIds(prev => { const s = new Set(prev); s.delete(sourceId); return s; });
-                    return;
+                let extractedText = '';
+
+                // Strategy 1: Try Gemini AI extraction (works on all platforms, handles large files)
+                try {
+                    console.log('[CreateNote] Trying Gemini PDF extraction...');
+                    const geminiText = await extractTextFromPDF(base64, 'base64');
+                    if (geminiText && geminiText.trim().length >= 20) {
+                        extractedText = geminiText.trim();
+                        console.log(`[CreateNote] Gemini extracted ${extractedText.length} chars`);
+                    }
+                } catch (geminiErr) {
+                    console.warn('[CreateNote] Gemini extraction failed:', geminiErr);
                 }
 
-                const formData = new FormData();
-                formData.append('base64Image', `data:application/pdf;base64,${base64}`);
-                formData.append('apikey', OCR_API_KEY);
-                formData.append('language', 'eng');
-                formData.append('isOverlayRequired', 'false');
-                formData.append('detectOrientation', 'true');
-                formData.append('scale', 'true');
-                formData.append('OCREngine', '2');
-                formData.append('filetype', 'PDF');
+                // Strategy 2: Fall back to OCR.space (for scanned/image PDFs)
+                if (!extractedText && OCR_API_KEY) {
+                    try {
+                        console.log('[CreateNote] Falling back to OCR.space...');
+                        const sizeInKB = (base64.length * 3) / 4 / 1024;
+                        if (sizeInKB <= 1024) {
+                            const formData = new FormData();
+                            formData.append('base64Image', `data:application/pdf;base64,${base64}`);
+                            formData.append('apikey', OCR_API_KEY);
+                            formData.append('language', 'eng');
+                            formData.append('isOverlayRequired', 'false');
+                            formData.append('detectOrientation', 'true');
+                            formData.append('scale', 'true');
+                            formData.append('OCREngine', '2');
+                            formData.append('filetype', 'PDF');
 
-                const response = await fetch(OCR_API_URL, {
-                    method: 'POST',
-                    body: formData,
-                    headers: { 'Accept': 'application/json' },
-                });
-                const ocrResult = await response.json();
+                            const response = await fetch(OCR_API_URL, {
+                                method: 'POST',
+                                body: formData,
+                                headers: { 'Accept': 'application/json' },
+                            });
+                            const ocrResult = await response.json();
 
-                if (ocrResult.OCRExitCode === 1 && ocrResult.ParsedResults?.length > 0) {
-                    const fullText = ocrResult.ParsedResults
-                        .map((page: any) => page.ParsedText || '')
-                        .join('\n\n')
-                        .trim();
+                            if (ocrResult.OCRExitCode === 1 && ocrResult.ParsedResults?.length > 0) {
+                                const ocrText = ocrResult.ParsedResults
+                                    .map((page: any) => page.ParsedText || '')
+                                    .join('\n\n')
+                                    .trim();
+                                if (ocrText.length > 0) {
+                                    extractedText = ocrText;
+                                    console.log(`[CreateNote] OCR extracted ${extractedText.length} chars`);
+                                }
+                            }
+                        }
+                    } catch (ocrErr) {
+                        console.warn('[CreateNote] OCR fallback failed:', ocrErr);
+                    }
+                }
 
+                // Update source with result
+                if (extractedText) {
                     setNoteSources(prev => prev.map(s =>
-                        s.id === sourceId ? { ...s, content: fullText || '(No text extracted)' } : s
+                        s.id === sourceId ? { ...s, content: extractedText } : s
                     ));
                 } else {
                     setNoteSources(prev => prev.map(s =>
-                        s.id === sourceId ? { ...s, content: '(OCR failed — PDF attached without text)' } : s
+                        s.id === sourceId ? { ...s, content: '(PDF text extraction failed — try pasting text manually)' } : s
                     ));
+                    Alert.alert('PDF Notice', 'Could not extract text from this PDF. You can paste the text manually.');
                 }
             } catch (err) {
                 console.error('PDF text extraction error:', err);
                 setNoteSources(prev => prev.map(s =>
-                    s.id === sourceId ? { ...s, content: '(Text extraction error — PDF attached without text)' } : s
+                    s.id === sourceId ? { ...s, content: '(PDF text extraction failed)' } : s
                 ));
             } finally {
                 setProcessingPdfIds(prev => { const s = new Set(prev); s.delete(sourceId); return s; });

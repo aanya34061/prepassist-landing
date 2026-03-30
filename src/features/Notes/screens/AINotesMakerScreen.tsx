@@ -55,6 +55,7 @@ import { useAuth } from '../../../context/AuthContext';
 import { syncNoteToFirebase, deleteNoteFromFirebase } from '../../../services/firebaseNotesSync';
 import { OPENROUTER_API_KEY } from '../../../utils/secureKey';
 import { ACTIVE_MODELS, OPENROUTER_BASE_URL, SITE_CONFIG } from '../../../config/aiModels';
+import { extractTextFromPDF } from '../../../utils/pdfTextExtract';
 import { checkNewsMatches, MatchedArticle, getMatchesByNoteId, checkPDFCrossReferences, PDFCrossRef } from '../../../services/NewsMatchService';
 import { FlatList, RefreshControl } from 'react-native';
 import InsightSupportModal from '../../../components/InsightSupportModal';
@@ -635,76 +636,105 @@ export const AINotesMakerScreen: React.FC<{ navigation: any }> = ({ navigation }
             // Mark this PDF as processing
             setProcessingPdfIds(prev => new Set(prev).add(sourceId));
 
-            // Run OCR
+            // Extract text from PDF
             try {
-                const base64Data = await FileSystem.readAsStringAsync(asset.uri, {
-                    encoding: FileSystem.EncodingType.Base64,
-                });
+                // Read file as base64 (works on both web and native)
+                let base64Data: string;
+                if (Platform.OS === 'web') {
+                    const resp = await fetch(asset.uri);
+                    const blob = await resp.blob();
+                    base64Data = await new Promise<string>((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                            const dataUrl = reader.result as string;
+                            resolve(dataUrl.split(',')[1] || '');
+                        };
+                        reader.onerror = reject;
+                        reader.readAsDataURL(blob);
+                    });
+                } else {
+                    base64Data = await FileSystem.readAsStringAsync(asset.uri, {
+                        encoding: FileSystem.EncodingType.Base64,
+                    });
+                }
 
                 if (!base64Data) {
                     throw new Error('Could not read PDF file.');
                 }
 
-                // Check file size (~1MB limit for OCR.space free tier)
-                const fileSizeKB = (base64Data.length * 3) / 4 / 1024;
-                if (fileSizeKB > 1024) {
-                    Alert.alert('Large PDF', 'This PDF is large and may take longer to process. For best results, use PDFs under 1 MB.');
-                }
+                let extractedText = '';
 
-                const formData = new FormData();
-                formData.append('base64Image', 'data:application/pdf;base64,' + base64Data);
-                formData.append('apikey', OCR_API_KEY);
-                formData.append('language', 'eng');
-                formData.append('isOverlayRequired', 'false');
-                formData.append('filetype', 'PDF');
-                formData.append('detectOrientation', 'true');
-                formData.append('scale', 'true');
-                formData.append('OCREngine', '2');
-                formData.append('isTable', 'true');
-
-                const response = await fetch(OCR_API_URL, {
-                    method: 'POST',
-                    body: formData,
-                    headers: { 'Accept': 'application/json' },
-                });
-
-                if (!response.ok) {
-                    throw new Error(`OCR service returned ${response.status}`);
-                }
-
-                const ocrResult = await response.json();
-
-                if (ocrResult.OCRExitCode === 1 && ocrResult.ParsedResults?.length > 0) {
-                    const extractedText = ocrResult.ParsedResults
-                        .map((page: any) => page.ParsedText || '')
-                        .join('\n\n')
-                        .trim();
-
-                    if (extractedText.length > 0) {
-                        setNoteSources(prev => prev.map(s =>
-                            s.id === sourceId ? { ...s, content: extractedText } : s
-                        ));
-                    } else {
-                        // OCR returned empty text - possibly a scanned image PDF
-                        setNoteSources(prev => prev.map(s =>
-                            s.id === sourceId ? { ...s, content: '[PDF text could not be extracted. The PDF may contain only images.]' } : s
-                        ));
-                        Alert.alert('PDF Notice', 'Could not extract text from this PDF. It may contain only images or scanned content that is not readable.');
+                // Strategy 1: Gemini AI extraction (works on all platforms, handles large files)
+                try {
+                    console.log('[AINotes] Trying Gemini PDF extraction...');
+                    const geminiText = await extractTextFromPDF(base64Data, 'base64');
+                    if (geminiText && geminiText.trim().length >= 20) {
+                        extractedText = geminiText.trim();
+                        console.log(`[AINotes] Gemini extracted ${extractedText.length} chars`);
                     }
-                } else {
-                    const errorMsg = ocrResult.ErrorMessage?.[0] || ocrResult.ParsedResults?.[0]?.ErrorMessage || 'Unknown OCR error';
-                    console.error('[AINotes] OCR error:', errorMsg);
+                } catch (geminiErr) {
+                    console.warn('[AINotes] Gemini extraction failed:', geminiErr);
+                }
+
+                // Strategy 2: Fall back to OCR.space (for scanned/image PDFs)
+                if (!extractedText && OCR_API_KEY) {
+                    try {
+                        console.log('[AINotes] Falling back to OCR.space...');
+                        const fileSizeKB = (base64Data.length * 3) / 4 / 1024;
+                        if (fileSizeKB <= 1024) {
+                            const formData = new FormData();
+                            formData.append('base64Image', 'data:application/pdf;base64,' + base64Data);
+                            formData.append('apikey', OCR_API_KEY);
+                            formData.append('language', 'eng');
+                            formData.append('isOverlayRequired', 'false');
+                            formData.append('filetype', 'PDF');
+                            formData.append('detectOrientation', 'true');
+                            formData.append('scale', 'true');
+                            formData.append('OCREngine', '2');
+                            formData.append('isTable', 'true');
+
+                            const response = await fetch(OCR_API_URL, {
+                                method: 'POST',
+                                body: formData,
+                                headers: { 'Accept': 'application/json' },
+                            });
+
+                            if (response.ok) {
+                                const ocrResult = await response.json();
+                                if (ocrResult.OCRExitCode === 1 && ocrResult.ParsedResults?.length > 0) {
+                                    const ocrText = ocrResult.ParsedResults
+                                        .map((page: any) => page.ParsedText || '')
+                                        .join('\n\n')
+                                        .trim();
+                                    if (ocrText.length > 0) {
+                                        extractedText = ocrText;
+                                        console.log(`[AINotes] OCR extracted ${extractedText.length} chars`);
+                                    }
+                                }
+                            }
+                        }
+                    } catch (ocrErr) {
+                        console.warn('[AINotes] OCR fallback failed:', ocrErr);
+                    }
+                }
+
+                // Update source with result
+                if (extractedText) {
                     setNoteSources(prev => prev.map(s =>
-                        s.id === sourceId ? { ...s, content: `[PDF extraction failed: ${errorMsg}]` } : s
+                        s.id === sourceId ? { ...s, content: extractedText } : s
                     ));
-                    Alert.alert('PDF Error', `Could not extract text: ${errorMsg}`);
+                } else {
+                    setNoteSources(prev => prev.map(s =>
+                        s.id === sourceId ? { ...s, content: '[PDF text extraction failed — try pasting text manually]' } : s
+                    ));
+                    Alert.alert('PDF Notice', 'Could not extract text from this PDF. You can paste the text manually.');
                 }
             } catch (ocrError: any) {
-                console.error('[AINotes] PDF OCR error:', ocrError);
+                console.error('[AINotes] PDF extraction error:', ocrError);
                 setNoteSources(prev => prev.map(s =>
                     s.id === sourceId ? { ...s, content: '[PDF extraction failed]' } : s
                 ));
-                Alert.alert('PDF Error', ocrError.message || 'Failed to extract text from PDF. Please try a smaller file.');
+                Alert.alert('PDF Error', ocrError.message || 'Failed to extract text from PDF.');
             } finally {
                 // Remove from processing set
                 setProcessingPdfIds(prev => {
