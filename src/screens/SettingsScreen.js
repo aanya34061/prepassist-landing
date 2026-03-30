@@ -110,11 +110,25 @@ export default function SettingsScreen({ navigation }) {
   };
 
   const handleDeleteAccount = async () => {
+    const doDelete = async () => {
+      try {
+        setIsDeletingAccount(true);
+        await deleteAccount();
+        // deleteAccount sets user to null, which triggers navigation to login screen
+      } catch (e) {
+        setIsDeletingAccount(false);
+        if (Platform.OS === 'web') {
+          window.alert('Failed to delete account. Please try again.');
+        } else {
+          Alert.alert('Error', 'Failed to delete account. Please try again.');
+        }
+      }
+    };
+
     if (Platform.OS === 'web') {
       if (window.confirm('This will permanently delete your account and all associated data. This action cannot be undone.')) {
         if (window.confirm('Are you absolutely sure? All your progress, saved questions, and settings will be permanently deleted.')) {
-          try { setIsDeletingAccount(true); await deleteAccount(); }
-          catch { window.alert('Failed to delete account. Please try again.'); setIsDeletingAccount(false); }
+          await doDelete();
         }
       }
       return;
@@ -128,10 +142,7 @@ export default function SettingsScreen({ navigation }) {
             'All your progress, saved questions, and settings will be permanently deleted.',
             [
               { text: 'Cancel', style: 'cancel' },
-              { text: 'Yes, Delete My Account', style: 'destructive', onPress: async () => {
-                try { setIsDeletingAccount(true); await deleteAccount(); }
-                catch { Alert.alert('Error', 'Failed to delete account. Please try again.'); setIsDeletingAccount(false); }
-              }},
+              { text: 'Yes, Delete My Account', style: 'destructive', onPress: doDelete },
             ]
           );
         }},

@@ -534,28 +534,44 @@ export const AuthProvider = ({ children }) => {
     if (!userId) throw new Error('No user logged in');
 
     try {
-      // Step 1: Delete user data from Supabase tables
-      // Try RPC first (server-side function that handles everything including auth deletion)
-      const { error: rpcError } = await supabase.rpc('delete_user_account', {
+      let authDeleted = false;
+
+      // Step 1: Try RPC (deletes data + auth record on server side)
+      const { data: rpcData, error: rpcError } = await supabase.rpc('delete_user_account', {
         p_user_id: userId,
       });
 
-      if (rpcError) {
-        console.warn('[Auth] delete_user_account RPC failed, cleaning up manually:', rpcError.message);
+      if (!rpcError && rpcData?.success) {
+        authDeleted = true;
+        console.log('[Auth] RPC delete_user_account succeeded');
+      } else {
+        console.warn('[Auth] RPC failed:', rpcError?.message || rpcData?.error || 'unknown');
 
         // Fallback: manually delete from known tables
-        await Promise.allSettled([
+        const results = await Promise.allSettled([
           supabase.from('credit_transactions').delete().eq('user_id', userId),
           supabase.from('user_subscriptions').delete().eq('user_id', userId),
           supabase.from('saved_articles').delete().eq('user_id', userId),
           supabase.from('bug_reports').delete().eq('user_id', userId),
         ]);
+        console.log('[Auth] Manual table cleanup:', results.map(r => r.status));
       }
 
-      // Step 2: Sign out (invalidates session tokens)
-      await supabase.auth.signOut().catch(() => {});
+      // Step 2: If RPC didn't delete auth, lock the account by randomizing password
+      if (!authDeleted) {
+        try {
+          const randomPass = crypto.randomUUID?.() || (Math.random().toString(36) + Date.now().toString(36));
+          await supabase.auth.updateUser({ password: randomPass });
+          console.log('[Auth] Account locked (password randomized)');
+        } catch (lockErr) {
+          console.warn('[Auth] Could not lock account:', lockErr);
+        }
+      }
 
-      // Step 3: Clear all local data
+      // Step 3: Sign out (invalidates all session tokens)
+      await supabase.auth.signOut({ scope: 'global' }).catch(() => {});
+
+      // Step 4: Clear all local data
       const keysToRemove = [
         USER_STORAGE_KEY,
         GUEST_USER_KEY,
