@@ -554,11 +554,13 @@ export const AINotesMakerScreen: React.FC<{ navigation: any }> = ({ navigation }
             return;
         }
 
+        // Filter out failed PDF/OCR sources that have no real content
+        const isFailedSource = (c: string) => /^\[.*(?:failed|could not).*\]$/i.test(c.trim());
         const hasContent = noteContent.trim().length > 0;
-        const hasSources = noteSources.some(s => s.content.trim().length > 0);
+        const hasSources = noteSources.some(s => s.content.trim().length > 0 && !isFailedSource(s.content));
 
         if (!hasContent && !hasSources) {
-            Alert.alert('No Content', 'Please add some content or sources to summarize.');
+            Alert.alert('No Content', 'Please add some content or sources to summarize. PDF text extraction may have failed — try pasting text manually.');
             return;
         }
 
@@ -574,7 +576,7 @@ export const AINotesMakerScreen: React.FC<{ navigation: any }> = ({ navigation }
 
             if (noteSources.length > 0) {
                 for (const source of noteSources) {
-                    if (source.content.trim()) {
+                    if (source.content.trim() && !isFailedSource(source.content)) {
                         const sourceLabel = source.type === 'pdf' ? `PDF: ${source.label}` :
                             source.type === 'camera' ? `Camera: ${source.label}` :
                             source.type === 'link' ? `Link: ${source.label}` :
@@ -604,7 +606,7 @@ export const AINotesMakerScreen: React.FC<{ navigation: any }> = ({ navigation }
     };
 
     // ── Multi-Source Handlers ──────────────────────────────────────────
-    const OCR_API_KEY = 'K85553321788957';
+    const OCR_API_KEY = process.env.EXPO_PUBLIC_OCR_API_KEY || '';
     const OCR_API_URL = 'https://api.ocr.space/parse/image';
 
     const handleAddPdfSource = async () => {

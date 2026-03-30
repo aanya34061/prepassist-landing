@@ -30,7 +30,7 @@ import { syncNoteToFirebase, deleteNoteFromFirebase } from '../../../services/fi
 import { shareNotePdf, previewNotePdf } from '../services/notePdfService';
 import * as FileSystem from 'expo-file-system/legacy';
 
-const OCR_API_KEY = 'K85553321788957';
+const OCR_API_KEY = process.env.EXPO_PUBLIC_OCR_API_KEY || '';
 const OCR_API_URL = 'https://api.ocr.space/parse/image';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');

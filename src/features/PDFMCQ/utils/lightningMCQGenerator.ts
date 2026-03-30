@@ -17,7 +17,7 @@ import {
 import { extractTextFromPDF } from '../../../utils/pdfTextExtract';
 
 // OCR API Configuration
-const OCR_API_KEY = 'K85553321788957';
+const OCR_API_KEY = process.env.EXPO_PUBLIC_OCR_API_KEY || '';
 const OCR_API_URL = 'https://api.ocr.space/parse/image';
 
 // Types

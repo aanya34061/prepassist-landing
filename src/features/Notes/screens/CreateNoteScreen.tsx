@@ -38,7 +38,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 
-const OCR_API_KEY = 'K85553321788957';
+const OCR_API_KEY = process.env.EXPO_PUBLIC_OCR_API_KEY || '';
 const OCR_API_URL = 'https://api.ocr.space/parse/image';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -455,9 +455,14 @@ export const CreateNoteScreen: React.FC<CreateNoteScreenProps> = ({ navigation, 
     // ── AI Summarization ────────────────────────────────────────────────────
 
     const handleSummarize = async () => {
-        const allContent = noteSources.map(s => s.content).filter(c => c.trim()).join('\n\n---\n\n');
+        // Filter out failed PDF/OCR sources that have no real content
+        const isFailedSource = (c: string) => /^\(.*(?:failed|error|could not).*\)$/i.test(c.trim());
+        const allContent = noteSources
+            .map(s => s.content)
+            .filter(c => c.trim() && !isFailedSource(c))
+            .join('\n\n---\n\n');
         if (!allContent || allContent.trim().length === 0) {
-            Alert.alert('No Content', 'Please add some sources with content to summarize.');
+            Alert.alert('No Content', 'Please add some sources with actual text content to summarize. PDF text extraction may have failed — try pasting text manually.');
             return;
         }
 

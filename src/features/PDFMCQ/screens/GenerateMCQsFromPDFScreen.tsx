@@ -275,7 +275,7 @@ function downloadFile(content: string, filename: string, mimeType: string): void
 }
 
 // ===================== PDF TEXT EXTRACTION =====================
-const OCR_API_KEY = 'K85553321788957';
+const OCR_API_KEY = process.env.EXPO_PUBLIC_OCR_API_KEY || '';
 const OCR_API_URL = 'https://api.ocr.space/parse/image';
 
 /** Extract text from PDF using Gemini API (web) — no page limit */
