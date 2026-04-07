@@ -1,0 +1,65 @@
+import { NextResponse } from 'next/server';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { supabase } from '@/lib/supabase';
+import { db } from '@/lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
+
+// Native aggressive timeout extension for heavy PDF document arrays.
+export const maxDuration = 60; 
+
+function bufferToGenerativePart(buffer: Buffer, mimeType: string) {
+    return {
+        inlineData: {
+            data: buffer.toString("base64"),
+            mimeType,
+        },
+    };
+}
+
+export async function POST(req: Request) {
+    try {
+        const authHeader = req.headers.get("Authorization");
+        const token = authHeader?.split(" ")[1];
+        
+        if (!token) return NextResponse.json({ error: "Missing Security Token" }, { status: 401 });
+
+        const { data: { user } } = await supabase.auth.getUser(token);
+        if (!user) return NextResponse.json({ error: "Unauthenticated Node." }, { status: 401 });
+
+        const userDoc = await getDoc(doc(db, "users", user.id));
+        if (!userDoc.exists() || userDoc.data().role !== "admin") {
+            return NextResponse.json({ error: "Insufficient Matrix Clearance." }, { status: 403 });
+        }
+
+        const apiKey = process.env.GOOGLE_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY || "";
+        if (!apiKey) return NextResponse.json({ error: "Fatal Error: Missing Native API Credentials." }, { status: 500 });
+        
+        const formData = await req.formData();
+        const file = formData.get("file") as File | null;
+        
+        if (!file) {
+            return NextResponse.json({ error: "Missing Target PDF Documentation Matrix." }, { status: 400 });
+        }
+
+        const arrayBuffer = await file.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        const pdfPart = bufferToGenerativePart(buffer, "application/pdf");
+
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+        const prompt = "Extract absolutely all text mechanically from this academic PDF document exactly matching its linear layout natively. Do not summarize, skip, or format using markdown. Process and extract raw content seamlessly across every page.";
+
+        const result = await model.generateContent([prompt, pdfPart]);
+        const responseText = result.response.text();
+
+        if (!responseText || responseText.length < 50) {
+            throw new Error("Extraction architecture yielded insufficient matrices. Document may be natively locked or pure raster.");
+        }
+
+        return NextResponse.json({ success: true, text: responseText });
+    } catch (e: any) {
+        console.error("PDF Flash Extractor Node Panic:", e);
+        return NextResponse.json({ error: e.message || "Hardware or Network execution layer dropped." }, { status: 500 });
+    }
+}

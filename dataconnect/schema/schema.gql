@@ -1,0 +1,57 @@
+type User @table {
+  displayName: String!
+  email: String!
+  createdAt: Timestamp!
+  photoUrl: String
+  studyGoal: String
+  preferredLanguage: String
+}
+
+type StudyMaterial @table {
+  title: String!
+  type: String!
+  subject: String!
+  createdAt: Timestamp!
+  content: String
+  url: String
+  author: String
+  topicTags: [String]
+}
+
+type StudySession @table {
+  user: User
+  sessionDate: Date!
+  durationMinutes: Int!
+  subject: String!
+  topicCovered: String!
+  notes: String
+}
+
+type MockTest @table {
+  title: String!
+  subject: String!
+  numQuestions: Int!
+  difficultyLevel: String!
+  createdAt: Timestamp!
+  description: String
+  durationMinutes: Int
+}
+
+type TestAttempt @table {
+  user: User
+  mockTest: MockTest
+  attemptedAt: Timestamp!
+  score: Int!
+  totalQuestions: Int!
+  timeTakenMinutes: Int
+  incorrectQuestions: [UUID]
+}
+
+type DiscussionPost @table {
+  user: User
+  title: String!
+  content: String!
+  createdAt: Timestamp!
+  subjectTag: String
+  parentPost: DiscussionPost
+}

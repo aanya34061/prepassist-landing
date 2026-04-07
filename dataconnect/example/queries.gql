@@ -1,0 +1,47 @@
+query ListAllMockTests @auth(level: PUBLIC, insecureReason: "This operation is safe to expose to the public") {
+  mockTests {
+    id
+    title
+    subject
+    difficultyLevel
+    numQuestions
+    durationMinutes
+    createdAt
+  }
+}
+
+query GetUserStudySessions($userId: UUID!) @auth(level: USER, insecureReason: "This operation is safe to expose to all logged in users.") {
+  studySessions(where: {userId: {eq: $userId}}, orderBy: [{sessionDate: DESC}]) {
+    id
+    sessionDate
+    durationMinutes
+    subject
+    topicCovered
+    notes
+    user {
+      displayName
+    }
+  }
+}
+
+mutation CreateDiscussionPost($title: String!, $content: String!, $subjectTag: String) @auth(level: USER, insecureReason: "This operation is safe to expose to all logged in users.") {
+  discussionPost_insert(data: {
+    title: $title,
+    content: $content,
+    subjectTag: $subjectTag,
+    userId_expr: "auth.uid",
+    createdAt_expr: "request.time"
+  })
+}
+
+mutation RecordTestAttempt($mockTestId: UUID!, $score: Int!, $totalQuestions: Int!, $timeTakenMinutes: Int, $incorrectQuestions: [UUID!]) @auth(level: USER, insecureReason: "This operation is safe to expose to all logged in users.") {
+  testAttempt_insert(data: {
+    mockTestId: $mockTestId,
+    userId_expr: "auth.uid",
+    score: $score,
+    totalQuestions: $totalQuestions,
+    timeTakenMinutes: $timeTakenMinutes,
+    incorrectQuestions: $incorrectQuestions,
+    attemptedAt_expr: "request.time"
+  })
+}

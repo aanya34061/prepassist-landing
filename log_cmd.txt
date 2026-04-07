@@ -1,0 +1,150 @@
+◇ injected env (18) from .env.local // tip: ◈ secrets for agents [www.dotenvx.com]
+INITIALIZING NATIVE UPSERT PROTOCOL: UPSC CONSTITUTIONAL MATRICES...
+[1/10] Processing Context: "The Pardoning Power of the President is ..."
+Vectorization Semantic Error: GoogleGenerativeAIFetchError: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent: [404 Not Found] models/text-embedding-004 is not found for API version v1beta, or is not supported for embedContent. Call ListModels to see the list of available models and their supported methods.
+    at handleResponseNotOk (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\node_modules\@google\generative-ai\dist\index.js:434:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async makeRequest (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\node_modules\@google\generative-ai\dist\index.js:403:9)
+    at async embedContent (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\node_modules\@google\generative-ai\dist\index.js:1315:22)
+    at async generateUPSCIdentity (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\src\lib\ai\google-embeddings.ts:23:20)
+    at async executeSeedSequence (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\scripts\seed-xray.ts:88:26) {
+  status: 404,
+  statusText: 'Not Found',
+  errorDetails: undefined
+}
+ > Failure tracking Google Generator API Error: Error: Failed to generate vector semantic signature.
+[2/10] Processing Context: "The concept of 'Constitutional Morality'..."
+Vectorization Semantic Error: GoogleGenerativeAIFetchError: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent: [404 Not Found] models/text-embedding-004 is not found for API version v1beta, or is not supported for embedContent. Call ListModels to see the list of available models and their supported methods.
+    at handleResponseNotOk (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\node_modules\@google\generative-ai\dist\index.js:434:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async makeRequest (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\node_modules\@google\generative-ai\dist\index.js:403:9)
+    at async embedContent (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\node_modules\@google\generative-ai\dist\index.js:1315:22)
+    at async generateUPSCIdentity (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\src\lib\ai\google-embeddings.ts:23:20)
+    at async executeSeedSequence (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\scripts\seed-xray.ts:88:26) {
+  status: 404,
+  statusText: 'Not Found',
+  errorDetails: undefined
+}
+ > Failure tracking Google Generator API Error: Error: Failed to generate vector semantic signature.
+[3/10] Processing Context: "Basic Structure Doctrine was explicitly ..."
+Vectorization Semantic Error: GoogleGenerativeAIFetchError: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent: [404 Not Found] models/text-embedding-004 is not found for API version v1beta, or is not supported for embedContent. Call ListModels to see the list of available models and their supported methods.
+    at handleResponseNotOk (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\node_modules\@google\generative-ai\dist\index.js:434:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async makeRequest (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\node_modules\@google\generative-ai\dist\index.js:403:9)
+    at async embedContent (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\node_modules\@google\generative-ai\dist\index.js:1315:22)
+    at async generateUPSCIdentity (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\src\lib\ai\google-embeddings.ts:23:20)
+    at async executeSeedSequence (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\scripts\seed-xray.ts:88:26) {
+  status: 404,
+  statusText: 'Not Found',
+  errorDetails: undefined
+}
+ > Failure tracking Google Generator API Error: Error: Failed to generate vector semantic signature.
+[4/10] Processing Context: "Article 21 guarantees the Protection of ..."
+Vectorization Semantic Error: GoogleGenerativeAIFetchError: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent: [404 Not Found] models/text-embedding-004 is not found for API version v1beta, or is not supported for embedContent. Call ListModels to see the list of available models and their supported methods.
+    at handleResponseNotOk (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\node_modules\@google\generative-ai\dist\index.js:434:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async makeRequest (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\node_modules\@google\generative-ai\dist\index.js:403:9)
+    at async embedContent (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\node_modules\@google\generative-ai\dist\index.js:1315:22)
+    at async generateUPSCIdentity (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\src\lib\ai\google-embeddings.ts:23:20)
+    at async executeSeedSequence (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\scripts\seed-xray.ts:88:26) {
+  status: 404,
+  statusText: 'Not Found',
+  errorDetails: undefined
+}
+ > Failure tracking Google Generator API Error: Error: Failed to generate vector semantic signature.
+[5/10] Processing Context: "The Tenth Schedule is heavily associated..."
+Vectorization Semantic Error: GoogleGenerativeAIFetchError: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent: [404 Not Found] models/text-embedding-004 is not found for API version v1beta, or is not supported for embedContent. Call ListModels to see the list of available models and their supported methods.
+    at handleResponseNotOk (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\node_modules\@google\generative-ai\dist\index.js:434:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async makeRequest (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\node_modules\@google\generative-ai\dist\index.js:403:9)
+    at async embedContent (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\node_modules\@google\generative-ai\dist\index.js:1315:22)
+    at async generateUPSCIdentity (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\src\lib\ai\google-embeddings.ts:23:20)
+    at async executeSeedSequence (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\scripts\seed-xray.ts:88:26) {
+  status: 404,
+  statusText: 'Not Found',
+  errorDetails: undefined
+}
+ > Failure tracking Google Generator API Error: Error: Failed to generate vector semantic signature.
+[6/10] Processing Context: "Directive Principles of State Policy are..."
+Vectorization Semantic Error: GoogleGenerativeAIFetchError: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent: [404 Not Found] models/text-embedding-004 is not found for API version v1beta, or is not supported for embedContent. Call ListModels to see the list of available models and their supported methods.
+    at handleResponseNotOk (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\node_modules\@google\generative-ai\dist\index.js:434:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async makeRequest (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\node_modules\@google\generative-ai\dist\index.js:403:9)
+    at async embedContent (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\node_modules\@google\generative-ai\dist\index.js:1315:22)
+    at async generateUPSCIdentity (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\src\lib\ai\google-embeddings.ts:23:20)
+    at async executeSeedSequence (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\scripts\seed-xray.ts:88:26) {
+  status: 404,
+  statusText: 'Not Found',
+  errorDetails: undefined
+}
+ > Failure tracking Google Generator API Error: Error: Failed to generate vector semantic signature.
+[7/10] Processing Context: "The Supreme Court possesses Advisory Jur..."
+Vectorization Semantic Error: GoogleGenerativeAIFetchError: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent: [404 Not Found] models/text-embedding-004 is not found for API version v1beta, or is not supported for embedContent. Call ListModels to see the list of available models and their supported methods.
+    at handleResponseNotOk (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\node_modules\@google\generative-ai\dist\index.js:434:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async makeRequest (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\node_modules\@google\generative-ai\dist\index.js:403:9)
+    at async embedContent (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\node_modules\@google\generative-ai\dist\index.js:1315:22)
+    at async generateUPSCIdentity (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\src\lib\ai\google-embeddings.ts:23:20)
+    at async executeSeedSequence (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\scripts\seed-xray.ts:88:26) {
+  status: 404,
+  statusText: 'Not Found',
+  errorDetails: undefined
+}
+ > Failure tracking Google Generator API Error: Error: Failed to generate vector semantic signature.
+[8/10] Processing Context: "Money Bills can only be introduced direc..."
+Vectorization Semantic Error: GoogleGenerativeAIFetchError: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent: [404 Not Found] models/text-embedding-004 is not found for API version v1beta, or is not supported for embedContent. Call ListModels to see the list of available models and their supported methods.
+    at handleResponseNotOk (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\node_modules\@google\generative-ai\dist\index.js:434:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async makeRequest (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\node_modules\@google\generative-ai\dist\index.js:403:9)
+    at async embedContent (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\node_modules\@google\generative-ai\dist\index.js:1315:22)
+    at async generateUPSCIdentity (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\src\lib\ai\google-embeddings.ts:23:20)
+    at async executeSeedSequence (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\scripts\seed-xray.ts:88:26) {
+  status: 404,
+  statusText: 'Not Found',
+  errorDetails: undefined
+}
+ > Failure tracking Google Generator API Error: Error: Failed to generate vector semantic signature.
+[9/10] Processing Context: "Election Commission of India operates un..."
+Vectorization Semantic Error: GoogleGenerativeAIFetchError: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent: [404 Not Found] models/text-embedding-004 is not found for API version v1beta, or is not supported for embedContent. Call ListModels to see the list of available models and their supported methods.
+    at handleResponseNotOk (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\node_modules\@google\generative-ai\dist\index.js:434:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async makeRequest (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\node_modules\@google\generative-ai\dist\index.js:403:9)
+    at async embedContent (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\node_modules\@google\generative-ai\dist\index.js:1315:22)
+    at async generateUPSCIdentity (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\src\lib\ai\google-embeddings.ts:23:20)
+    at async executeSeedSequence (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\scripts\seed-xray.ts:88:26) {
+  status: 404,
+  statusText: 'Not Found',
+  errorDetails: undefined
+}
+ > Failure tracking Google Generator API Error: Error: Failed to generate vector semantic signature.
+[10/10] Processing Context: "Financial Emergency provisions are delin..."
+Vectorization Semantic Error: GoogleGenerativeAIFetchError: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent: [404 Not Found] models/text-embedding-004 is not found for API version v1beta, or is not supported for embedContent. Call ListModels to see the list of available models and their supported methods.
+    at handleResponseNotOk (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\node_modules\@google\generative-ai\dist\index.js:434:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async makeRequest (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\node_modules\@google\generative-ai\dist\index.js:403:9)
+    at async embedContent (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\node_modules\@google\generative-ai\dist\index.js:1315:22)
+    at async generateUPSCIdentity (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\src\lib\ai\google-embeddings.ts:23:20)
+    at async executeSeedSequence (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\scripts\seed-xray.ts:88:26) {
+  status: 404,
+  statusText: 'Not Found',
+  errorDetails: undefined
+}
+ > Failure tracking Google Generator API Error: Error: Failed to generate vector semantic signature.
+
+--- SEEDING COMPLETE. HYBRID TARGETS DEPLOYED. ---
+Triggering Hybrid RPC Verification Test...
+Vectorization Semantic Error: GoogleGenerativeAIFetchError: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent: [404 Not Found] models/text-embedding-004 is not found for API version v1beta, or is not supported for embedContent. Call ListModels to see the list of available models and their supported methods.
+    at handleResponseNotOk (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\node_modules\@google\generative-ai\dist\index.js:434:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async makeRequest (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\node_modules\@google\generative-ai\dist\index.js:403:9)
+    at async embedContent (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\node_modules\@google\generative-ai\dist\index.js:1315:22)
+    at async generateUPSCIdentity (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\src\lib\ai\google-embeddings.ts:23:20)
+    at async executeSeedSequence (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\scripts\seed-xray.ts:114:28) {
+  status: 404,
+  statusText: 'Not Found',
+  errorDetails: undefined
+}
+Verification Engine Failed: Error: Failed to generate vector semantic signature.
+    at generateUPSCIdentity (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\src\lib\ai\google-embeddings.ts:34:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async executeSeedSequence (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\scripts\seed-xray.ts:114:28)

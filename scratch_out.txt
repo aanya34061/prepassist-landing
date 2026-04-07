@@ -1,0 +1,21 @@
+◇ injected env (18) from .env.local // tip: ⌘ enable debugging { debug: true }
+embedding-001 FAIL GoogleGenerativeAIFetchError: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/embedding-001:embedContent: [404 Not Found] models/embedding-001 is not found for API version v1beta, or is not supported for embedContent. Call ListModels to see the list of available models and their supported methods.
+    at handleResponseNotOk (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\node_modules\@google\generative-ai\dist\index.js:434:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async makeRequest (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\node_modules\@google\generative-ai\dist\index.js:403:9)
+    at async embedContent (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\node_modules\@google\generative-ai\dist\index.js:1315:22)
+    at async test (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\scratch.ts:9:6) {
+  status: 404,
+  statusText: 'Not Found',
+  errorDetails: undefined
+}
+text-embedding-004 FAIL GoogleGenerativeAIFetchError: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent: [404 Not Found] models/text-embedding-004 is not found for API version v1beta, or is not supported for embedContent. Call ListModels to see the list of available models and their supported methods.
+    at handleResponseNotOk (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\node_modules\@google\generative-ai\dist\index.js:434:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async makeRequest (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\node_modules\@google\generative-ai\dist\index.js:403:9)
+    at async embedContent (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\node_modules\@google\generative-ai\dist\index.js:1315:22)
+    at async test (C:\Users\ADMN\Downloads\vamsiprodupscappfinal-main\PrepAssistV2\prepassist-web-v2\scratch.ts:16:6) {
+  status: 404,
+  statusText: 'Not Found',
+  errorDetails: undefined
+}
